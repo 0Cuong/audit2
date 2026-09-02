@@ -1,0 +1,254 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Dynamic Personal OS CSS Custom Variables (Injected & Synchronized at runtime) */
+  --p-primary: #f4f4f5;
+  --p-secondary: #a1a1aa;
+  --p-accent: #f43f5e;
+  --p-bg: #121214;
+  --p-surface: #18181b;
+  --p-surface-elevated: #222226;
+  --p-text: #f4f4f5;
+  --p-text-muted: #a1a1aa;
+  --p-border: rgba(255, 255, 255, 0.08);
+  --p-card-radius: 1.5rem;
+  --p-btn-radius: 9999px;
+  --p-input-radius: 0.875rem;
+  --p-avatar-radius: 9999px;
+  --p-font-family: 'Plus Jakarta Sans', Inter, system-ui, sans-serif;
+  --p-heading-font: 'Newsreader', 'Cormorant Garamond', Georgia, serif;
+  --p-font-scale: 1;
+  --p-heading-scale: 1;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: var(--p-bg, #121214);
+    color: var(--p-text, #f4f4f5);
+  }
+  
+  body {
+    overflow-x: hidden;
+    font-family: var(--p-font-family, 'Plus Jakarta Sans', Inter, system-ui, sans-serif);
+    background-color: var(--p-bg, #121214);
+    color: var(--p-text, #f4f4f5);
+    min-height: 100vh;
+  }
+  
+  ::selection {
+    background: var(--p-accent, rgba(244, 63, 94, 0.4));
+    color: #ffffff;
+  }
+  
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--p-bg, #121214);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--p-border, rgba(255, 255, 255, 0.12));
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--p-text-muted, rgba(255, 255, 255, 0.25));
+  }
+}
+
+@layer components {
+  /* Dynamic Personal OS Glass Surfaces */
+  .glass {
+    background: rgba(24, 24, 27, 0.65);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--p-border, rgba(255, 255, 255, 0.08));
+    border-radius: var(--p-card-radius, 1.5rem);
+  }
+
+  .glass-card {
+    background: rgba(24, 24, 27, 0.75);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--p-border, rgba(255, 255, 255, 0.08));
+    border-radius: var(--p-card-radius, 1.5rem);
+  }
+
+  .glass-strong {
+    background: rgba(20, 20, 23, 0.94);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--p-border, rgba(255, 255, 255, 0.1));
+    border-radius: var(--p-card-radius, 1.5rem);
+  }
+
+  /* Personal OS Pill Button */
+  .btn-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: var(--p-btn-radius, 9999px);
+    border: 1px solid var(--p-border, rgba(255, 255, 255, 0.15));
+    background: rgba(255, 255, 255, 0.04);
+    padding: 0.625rem 1.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--p-text, #d4d4d8);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .btn-pill:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--p-border, rgba(255, 255, 255, 0.3));
+    color: #ffffff;
+    transform: translateY(-1px);
+  }
+
+  .btn-pill:active {
+    transform: translateY(0px) scale(0.98);
+  }
+
+  /* High contrast dynamic accent button fill */
+  .gradient-accent {
+    background: var(--p-accent, #f43f5e) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--p-btn-radius, 9999px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  }
+  .gradient-accent:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+  }
+
+  /* Editorial Headline typography */
+  .page-title {
+    font-family: var(--p-heading-font, 'Newsreader', 'Cormorant Garamond', serif);
+    font-size: calc(2.25rem * var(--p-heading-scale, 1));
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.15;
+    color: var(--p-text, #f4f4f5);
+  }
+  @media (min-width: 768px) {
+    .page-title {
+      font-size: calc(2.75rem * var(--p-heading-scale, 1));
+    }
+  }
+
+  /* Gradient text subtle */
+  .gradient-text {
+    background: linear-gradient(135deg, var(--p-text, #ffffff) 0%, var(--p-text-muted, #a1a1aa) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .section-container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  @media (min-width: 640px) {
+    .section-container {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+  @media (min-width: 1024px) {
+    .section-container {
+      padding-left: 2rem;
+      padding-right: 2rem;
+    }
+  }
+
+  .hover-lift {
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, box-shadow 0.25s ease;
+  }
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+}
+
+/* Background Layers for Image/GIF/Video/Gradient */
+.personal-os-bg-layer {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+  background-size: cover;
+  background-position: center;
+  transition: opacity 0.4s ease, filter 0.4s ease;
+}
+
+.personal-os-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1;
+  pointer-events: none;
+  transition: background-color 0.4s ease, opacity 0.4s ease;
+}
+
+/* Film Grain Noise Overlay */
+.noise-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  content: "";
+  opacity: 0.03;
+  pointer-events: none;
+  z-index: 2;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* Custom Typography Utility Classes */
+.font-pixel {
+  font-family: 'Silkscreen', 'Press Start 2P', monospace;
+}
+
+.font-script {
+  font-family: 'Caveat', 'Alex Brush', cursive;
+}
+
+.font-serif-editorial {
+  font-family: 'Newsreader', 'Cormorant Garamond', 'Cinzel', serif;
+}
+
+/* 3D Perspective & Spatial Depth Classes */
+.perspective-1200 {
+  perspective: 1200px;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.monolith-card {
+  background: rgba(9, 9, 13, 0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 60px -15px rgba(0, 0, 0, 0.75);
+}
+
+.monolith-card:hover {
+  border-color: rgba(229, 169, 60, 0.25);
+  box-shadow: 0 30px 70px -12px rgba(0, 0, 0, 0.85);
+}
+

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="cuongisme-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="60%" stop-color="#E4E4E7"/>
+      <stop offset="100%" stop-color="#A1A1AA"/>
+    </linearGradient>
+    <linearGradient id="accent-core" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FB7185"/>
+      <stop offset="100%" stop-color="#E11D48"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Canvas Background: Dark Obsidian Square with subtle corner radius -->
+  <rect width="64" height="64" rx="14" fill="#121214"/>
+  <rect x="1" y="1" width="62" height="62" rx="13" fill="none" stroke="#27272A" stroke-width="1.5"/>
+
+  <!-- Geometric Monogram C -->
+  <path d="M 44 18 L 24 18 C 20.686 18 18 20.686 18 24 L 18 40 C 18 43.314 20.686 46 24 46 L 44 46" 
+        fill="none" 
+        stroke="url(#cuongisme-grad)" 
+        stroke-width="5" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+
+  <!-- Minecraft/Geometry-inspired Core Heart Pixel (Diamond Notch) -->
+  <rect x="33" y="27" width="10" height="10" rx="2" transform="rotate(45 38 32)" fill="url(#accent-core)"/>
+</svg>
