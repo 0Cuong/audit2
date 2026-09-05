@@ -1,61 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Lock, Send, Clock, FileText, Trash2, X, Heart } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
-import { supabase } from '../lib/supabase';
+import { useLetters } from '../data/domain/useLetters';
 import { formatDateLocale } from '../lib/dateUtils';
-
-interface LoveLetter {
-  id: string;
-  title: string;
-  content: string;
-  from_partner: string;
-  to_partner: string;
-  is_draft: boolean;
-  is_locked: boolean;
-  scheduled_at?: string | null;
-  is_future: boolean;
-  reaction?: string;
-  created_at: string;
-  delivered_at?: string | null;
-}
-
-const DEFAULT_LETTERS: LoveLetter[] = [
-  {
-    id: 'let-1',
-    title: 'Gửi người anh yêu thương nhất',
-    content: 'Cảm ơn em vì đã đến bên anh, cùng anh chia sẻ từng niềm vui nhỏ bé mỗi ngày. Anh hứa sẽ luôn lắng nghe, thấu hiểu và nắm chặt tay em qua mọi bão giông cuộc đời.',
-    from_partner: 'partner1',
-    to_partner: 'partner2',
-    is_draft: false,
-    is_locked: false,
-    is_future: false,
-    created_at: '2024-05-20T10:00:00.000Z',
-    delivered_at: '2024-05-20T10:00:00.000Z',
-  },
-  {
-    id: 'let-2',
-    title: 'Bức thư gửi tương lai 1 năm nữa',
-    content: 'Hy vọng lúc em mở bức thư này, tụi mình đã cùng nhau hoàn thành được thêm nhiều ước mơ trong wishlist và vẫn luôn mỉm cười rạng rỡ như ngày đầu tiên!',
-    from_partner: 'partner1',
-    to_partner: 'partner2',
-    is_draft: false,
-    is_locked: true,
-    is_future: true,
-    scheduled_at: '2025-05-20T00:00:00.000Z',
-    created_at: '2024-05-20T10:00:00.000Z',
-  }
-];
+import { LoveLetterEntity } from '../data/schemas/letter';
 
 export default function Letters() {
   const { t, tc, profile, lang } = useApp();
-  const [letters, setLetters] = useState<LoveLetter[]>(() => {
-    const saved = localStorage.getItem('cuongisme_letters');
-    return saved ? JSON.parse(saved) : DEFAULT_LETTERS;
-  });
+  const { letters, addLetter } = useLetters();
+  
   const [filter, setFilter] = useState<'all' | 'drafts' | 'scheduled' | 'locked'>('all');
   const [showWrite, setShowWrite] = useState(false);
-  const [readingLetter, setReadingLetter] = useState<LoveLetter | null>(null);
+  const [readingLetter, setReadingLetter] = useState<LoveLetterEntity | null>(null);
   
   const [form, setForm] = useState({
     title: '',
@@ -67,19 +24,6 @@ export default function Letters() {
     scheduled_at: '',
   });
 
-  useEffect(() => {
-    supabase
-      .from('love_letters')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (!error && data && data.length > 0) {
-          setLetters(data);
-          localStorage.setItem('cuongisme_letters', JSON.stringify(data));
-        }
-      });
-  }, []);
-
   const filtered = letters.filter(l => {
     if (filter === 'drafts') return l.is_draft;
     if (filter === 'scheduled') return l.scheduled_at && !l.is_draft && new Date(l.scheduled_at) > new Date();
@@ -89,62 +33,41 @@ export default function Letters() {
 
   const sendLetter = async () => {
     if (!form.content) return;
-    
-    const newLetter: LoveLetter = {
-      id: 'local-' + Date.now(),
-      title: form.title || 'Thư Tình Yêu',
-      content: form.content,
-      from_partner: form.from_partner,
-      to_partner: form.to_partner,
-      is_draft: false,
-      is_locked: form.is_locked,
-      is_future: form.is_future,
-      scheduled_at: form.scheduled_at || null,
-      created_at: new Date().toISOString(),
-      delivered_at: form.is_future ? null : new Date().toISOString(),
-    };
-
-    const updated = [newLetter, ...letters];
-    setLetters(updated);
-    localStorage.setItem('cuongisme_letters', JSON.stringify(updated));
-    setShowWrite(false);
-    setForm({ title: '', content: '', from_partner: 'partner1', to_partner: 'partner2', is_locked: false, is_future: false, scheduled_at: '' });
-
     try {
-      const { data } = await supabase.from('love_letters').insert(newLetter).select().maybeSingle();
-      if (data) {
-        setLetters(prev => prev.map(l => l.id === newLetter.id ? data : l));
-      }
-    } catch (e) {
-      console.warn('Saved letter locally');
+      await addLetter({
+        title: form.title || 'Thư Tình Yêu',
+        content: form.content,
+        from_partner: form.from_partner,
+        to_partner: form.to_partner,
+        is_draft: false,
+        is_locked: form.is_locked,
+        is_future: form.is_future,
+        scheduled_at: form.scheduled_at || null,
+        delivered_at: form.is_future ? null : new Date().toISOString(),
+      });
+      setShowWrite(false);
+      setForm({ title: '', content: '', from_partner: 'partner1', to_partner: 'partner2', is_locked: false, is_future: false, scheduled_at: '' });
+    } catch (err) {
+      console.error(err);
     }
   };
 
   const saveDraft = async () => {
     if (!form.content && !form.title) return;
-    
-    const draft: LoveLetter = {
-      id: 'local-' + Date.now(),
-      title: form.title || 'Bản nháp thư tình',
-      content: form.content,
-      from_partner: form.from_partner,
-      to_partner: form.to_partner,
-      is_draft: true,
-      is_locked: false,
-      is_future: false,
-      created_at: new Date().toISOString(),
-    };
-
-    const updated = [draft, ...letters];
-    setLetters(updated);
-    localStorage.setItem('cuongisme_letters', JSON.stringify(updated));
-    setShowWrite(false);
-    setForm({ title: '', content: '', from_partner: 'partner1', to_partner: 'partner2', is_locked: false, is_future: false, scheduled_at: '' });
-
     try {
-      await supabase.from('love_letters').insert(draft);
-    } catch (e) {
-      // Local
+      await addLetter({
+        title: form.title || 'Bản nháp thư tình',
+        content: form.content,
+        from_partner: form.from_partner,
+        to_partner: form.to_partner,
+        is_draft: true,
+        is_locked: false,
+        is_future: false,
+      });
+      setShowWrite(false);
+      setForm({ title: '', content: '', from_partner: 'partner1', to_partner: 'partner2', is_locked: false, is_future: false, scheduled_at: '' });
+    } catch (err) {
+      console.error(err);
     }
   };
 

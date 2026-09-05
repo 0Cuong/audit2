@@ -1,50 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Gift, Heart, ExternalLink, Trash2, X, Check } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
-import { supabase } from '../lib/supabase';
-
-interface GiftItem {
-  id: string;
-  title: string;
-  description?: string;
-  url?: string;
-  image_url?: string;
-  category?: string;
-  occasion?: string;
-  price_range?: string;
-  is_received: boolean;
-  for_partner?: string;
-  created_at?: string;
-}
-
-const DEFAULT_GIFTS: GiftItem[] = [
-  {
-    id: 'gift-1',
-    title: 'Máy ảnh chụp lấy liền Fujifilm Instax Mini',
-    description: 'Để cùng nhau lưu giữ những tấm ảnh film xinh xắn dán vào sổ nhật ký.',
-    image_url: 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=600&q=80',
-    occasion: 'Kỷ niệm 1 năm',
-    is_received: true,
-    for_partner: 'partner2',
-  },
-  {
-    id: 'gift-2',
-    title: 'Đồng hồ đôi dây da tối giản',
-    description: 'Món quà nhắc nhở về từng phút giây quý giá hai đứa bên nhau.',
-    image_url: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=600&q=80',
-    occasion: 'Sinh nhật',
-    is_received: false,
-    for_partner: 'partner1',
-  }
-];
+import { useGifts } from '../data/domain/useGifts';
 
 export default function Gifts() {
   const { t, tc } = useApp();
-  const [gifts, setGifts] = useState<GiftItem[]>(() => {
-    const saved = localStorage.getItem('cuongisme_gifts');
-    return saved ? JSON.parse(saved) : DEFAULT_GIFTS;
-  });
+  const { gifts, addGift, updateGift, deleteGift } = useGifts();
+  
   const [filter, setFilter] = useState<'all' | 'wishlist' | 'received'>('all');
   const [showAdd, setShowAdd] = useState(false);
   
@@ -58,67 +21,40 @@ export default function Gifts() {
     for_partner: 'partner2',
   });
 
-  useEffect(() => {
-    supabase
-      .from('gifts')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (!error && data && data.length > 0) {
-          setGifts(data);
-          localStorage.setItem('cuongisme_gifts', JSON.stringify(data));
-        }
-      });
-  }, []);
-
-  const addGift = async () => {
+  const handleAddGift = async () => {
     if (!form.title) return;
-    
-    const newGift: GiftItem = {
-      id: 'local-' + Date.now(),
-      ...form,
-      is_received: false,
-      created_at: new Date().toISOString(),
-    };
-
-    const updated = [newGift, ...gifts];
-    setGifts(updated);
-    localStorage.setItem('cuongisme_gifts', JSON.stringify(updated));
-    setShowAdd(false);
-    setForm({ title: '', description: '', url: '', image_url: '', category: 'wishlist', occasion: '', for_partner: 'partner2' });
-
     try {
-      const { data } = await supabase.from('gifts').insert(newGift).select().maybeSingle();
-      if (data) {
-        setGifts(prev => prev.map(g => g.id === newGift.id ? data : g));
-      }
-    } catch (e) {
-      // Local
+      await addGift({
+        title: form.title,
+        description: form.description || undefined,
+        url: form.url || undefined,
+        image_url: form.image_url || undefined,
+        category: form.category,
+        occasion: form.occasion || undefined,
+        for_partner: form.for_partner,
+        is_received: false,
+      });
+      setShowAdd(false);
+      setForm({ title: '', description: '', url: '', image_url: '', category: 'wishlist', occasion: '', for_partner: 'partner2' });
+    } catch (err) {
+      console.error(err);
     }
   };
 
   const toggleReceived = async (id: string, currentVal: boolean) => {
-    const updated = gifts.map(g => g.id === id ? { ...g, is_received: !currentVal } : g);
-    setGifts(updated);
-    localStorage.setItem('cuongisme_gifts', JSON.stringify(updated));
-
     try {
-      await supabase.from('gifts').update({ is_received: !currentVal }).eq('id', id);
-    } catch (e) {
-      // Local
+      await updateGift(id, { is_received: !currentVal });
+    } catch (err) {
+      console.error(err);
     }
   };
 
-  const deleteGift = async (id: string) => {
+  const handleDeleteGift = async (id: string) => {
     if (!confirm('Bạn có chắc chắn muốn xóa món quà này?')) return;
-    const updated = gifts.filter(g => g.id !== id);
-    setGifts(updated);
-    localStorage.setItem('cuongisme_gifts', JSON.stringify(updated));
-
     try {
-      await supabase.from('gifts').delete().eq('id', id);
-    } catch (e) {
-      // Local
+      await deleteGift(id);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -183,7 +119,7 @@ export default function Gifts() {
                       loading="lazy" 
                     />
                     <button 
-                      onClick={() => deleteGift(gift.id)}
+                      onClick={() => handleDeleteGift(gift.id)}
                       className="absolute top-2.5 right-2.5 p-1.5 rounded-xl bg-black/60 text-white hover:text-red-400 transition opacity-0 group-hover:opacity-100"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -193,7 +129,7 @@ export default function Gifts() {
                   <div className={`h-36 ${tc.card} flex items-center justify-center relative`}>
                     <Gift className="w-10 h-10 opacity-30 text-rose-500" />
                     <button 
-                      onClick={() => deleteGift(gift.id)}
+                      onClick={() => handleDeleteGift(gift.id)}
                       className="absolute top-2.5 right-2.5 p-1.5 rounded-xl hover:bg-black/10 text-zinc-400 hover:text-red-400 transition opacity-0 group-hover:opacity-100"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -354,7 +290,7 @@ export default function Gifts() {
                   </button>
                   <button 
                     type="button"
-                    onClick={addGift} 
+                    onClick={handleAddGift} 
                     disabled={!form.title}
                     className="flex-1 py-2.5 gradient-accent rounded-xl text-sm text-white font-semibold hover:opacity-90 transition disabled:opacity-50 shadow-md"
                   >

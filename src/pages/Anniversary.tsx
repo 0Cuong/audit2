@@ -1,47 +1,24 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Calendar, Flame, Trash2, X, AlertCircle, Image } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
-import { supabase } from '../lib/supabase';
+import { useAnniversaries } from '../data/domain/useAnniversaries';
 import { getDaysUntilAnniversary, formatDateLocale } from '../lib/dateUtils';
-
-interface AnniversaryEvent {
-  id: string;
-  title: string;
-  date: string;
-  anniversary_type: 'yearly' | 'monthly' | 'birthday' | 'custom';
-  recurrence?: string;
-  photo_url?: string | null;
-}
-
-const DEFAULT_ANNIVERSARIES: AnniversaryEvent[] = [];
 
 export default function AnniversaryCenter() {
   const { t, tc, lang } = useApp();
-  const [events, setEvents] = useState<AnniversaryEvent[]>(() => {
-    const saved = localStorage.getItem('cuongisme_anniversaries');
-    return saved ? JSON.parse(saved) : DEFAULT_ANNIVERSARIES;
-  });
+  const { anniversaries: events, addAnniversary, updateAnniversary, deleteAnniversary } = useAnniversaries();
+  
   const [showAdd, setShowAdd] = useState(false);
   
   const [form, setForm] = useState({ 
     title: '', 
     date: new Date().toISOString().split('T')[0], 
-    anniversary_type: 'yearly' as 'yearly' | 'monthly' | 'birthday' | 'custom', 
-    recurrence: 'yearly',
+    type: 'yearly' as 'yearly' | 'monthly' | 'birthday' | 'custom', 
     photo_url: '' 
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    supabase.from('anniversaries').select('*').order('date').then(({ data, error }) => { 
-      if (!error && data && data.length > 0) {
-        setEvents(data); 
-        localStorage.setItem('cuongisme_anniversaries', JSON.stringify(data));
-      }
-    });
-  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -54,64 +31,37 @@ export default function AnniversaryCenter() {
     }
   };
 
-  const addEvent = async () => {
+  const handleAddEvent = async () => {
     if (!form.title || !form.date) return;
-    
-    const newEntry: AnniversaryEvent = {
-      id: 'local-' + Date.now(),
-      title: form.title,
-      date: form.date,
-      anniversary_type: form.anniversary_type,
-      recurrence: form.anniversary_type,
-      photo_url: form.photo_url || null,
-    };
-
-    const updated = [...events, newEntry];
-    setEvents(updated);
-    localStorage.setItem('cuongisme_anniversaries', JSON.stringify(updated));
-    setShowAdd(false);
-    setForm({ title: '', date: new Date().toISOString().split('T')[0], anniversary_type: 'yearly', recurrence: 'yearly', photo_url: '' });
-
     try {
-      const { data } = await supabase.from('anniversaries').insert({
+      await addAnniversary({
         title: form.title,
         date: form.date,
-        anniversary_type: form.anniversary_type,
-        recurrence: form.anniversary_type,
-        photo_url: form.photo_url || null,
-      }).select().maybeSingle();
-
-      if (data) {
-        setEvents(prev => prev.map(e => e.id === newEntry.id ? data : e));
-      }
-    } catch (e) {
-      // Local
+        type: form.type,
+        photo_url: form.photo_url || undefined,
+      });
+      setShowAdd(false);
+      setForm({ title: '', date: new Date().toISOString().split('T')[0], type: 'yearly', photo_url: '' });
+    } catch (err) {
+      console.error(err);
     }
   };
 
-  const deleteEvent = async (id: string) => {
+  const handleDeleteEvent = async (id: string) => {
     if (!confirm('Bạn có chắc chắn muốn xóa ngày kỷ niệm này?')) return;
-    const updated = events.filter(e => e.id !== id);
-    setEvents(updated);
-    localStorage.setItem('cuongisme_anniversaries', JSON.stringify(updated));
-
     try {
-      await supabase.from('anniversaries').delete().eq('id', id);
-    } catch (e) {
-      // Local
+      await deleteAnniversary(id);
+    } catch (err) {
+      console.error(err);
     }
   };
 
   const removePhotoFromEvent = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const updated = events.map(e => e.id === id ? { ...e, photo_url: null } : e);
-    setEvents(updated);
-    localStorage.setItem('cuongisme_anniversaries', JSON.stringify(updated));
-
     try {
-      await supabase.from('anniversaries').update({ photo_url: null }).eq('id', id);
-    } catch (e) {
-      // Local
+      await updateAnniversary(id, { photo_url: '' });
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -155,7 +105,7 @@ export default function AnniversaryCenter() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <AnimatePresence>
             {events.map((event, i) => {
-              const { daysLeft, isToday } = getDaysUntilAnniversary(event.date, event.anniversary_type);
+              const { daysLeft, isToday } = getDaysUntilAnniversary(event.date, event.type);
               const isSoon = daysLeft <= 30;
 
               return (
@@ -189,11 +139,11 @@ export default function AnniversaryCenter() {
                     {/* Tag badge & delete button */}
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-[10px] font-mono uppercase tracking-wider px-2.5 py-1 rounded-full font-semibold bg-white/[0.06] border border-white/10 text-zinc-300">
-                        {typeLabels[event.anniversary_type] || event.anniversary_type}
+                        {typeLabels[event.type] || event.type}
                       </span>
                       
                       <button 
-                        onClick={() => deleteEvent(event.id)}
+                        onClick={() => handleDeleteEvent(event.id)}
                         className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-white/10 text-zinc-500 hover:text-red-400 transition"
                         title="Delete Event"
                       >
@@ -311,8 +261,8 @@ export default function AnniversaryCenter() {
                   <div>
                     <label className={`block text-[11px] font-bold uppercase tracking-wider ${tc.textMuted} mb-1`}>Loại ngày kỷ niệm</label>
                     <select 
-                      value={form.anniversary_type} 
-                      onChange={e => setForm(p => ({ ...p, anniversary_type: e.target.value as any }))} 
+                      value={form.type} 
+                      onChange={e => setForm(p => ({ ...p, type: e.target.value as any }))} 
                       className={`w-full px-3 py-2 glass rounded-xl text-xs bg-neutral-900 ${tc.text} border ${tc.border} outline-none`}
                     >
                       <option value="yearly" className="bg-neutral-900 text-white">{t('anniversary.yearly')}</option>
@@ -333,7 +283,7 @@ export default function AnniversaryCenter() {
                   </button>
                   <button 
                     type="button"
-                    onClick={addEvent} 
+                    onClick={handleAddEvent} 
                     disabled={!form.title || !form.date}
                     className="flex-1 py-2.5 gradient-accent rounded-xl text-sm text-white font-semibold hover:opacity-90 transition disabled:opacity-50 shadow-md"
                   >

@@ -350,16 +350,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // Backward-compatibility: Check if user previously had relationshipStart in cuongisme_p_identity
         try {
           const cachedProfile = safeGetStorage<CoupleProfile>('cuongisme_profile', DEFAULT_PROFILE);
-          if (!cachedProfile.relationship_start || cachedProfile.relationship_start === '2024-05-18T00:00:00.000Z') {
+          if (!cachedProfile.relationship_start) {
             const legacyIdentity = safeGetStorage<any>('cuongisme_p_identity', null);
-            if (legacyIdentity?.relationshipStart && legacyIdentity.relationshipStart !== '2024-05-18T00:00:00.000Z') {
+            if (legacyIdentity?.relationshipStart) {
               const migrated = { ...cachedProfile, relationship_start: legacyIdentity.relationshipStart };
               setProfileState(migrated);
               safeSetStorage('cuongisme_profile', migrated);
-            } else if (!cachedProfile.relationship_start || cachedProfile.relationship_start === '2024-05-18T00:00:00.000Z') {
-              const updated = { ...cachedProfile, relationship_start: '2026-05-18T00:00:00.000Z' };
-              setProfileState(updated);
-              safeSetStorage('cuongisme_profile', updated);
             }
           }
         } catch {

@@ -1,22 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, MapPin, Trash2, Calendar, X, Heart, MessageSquare, Coffee, Plane, Star, Clock } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
-import { supabase } from '../lib/supabase';
+import { useTimeline } from '../data/domain/useTimeline';
 import { formatDateLocale } from '../lib/dateUtils';
-
-interface TimelineEvent {
-  id: string;
-  title: string;
-  date: string;
-  event_type: string;
-  story?: string;
-  location?: string;
-  photos?: string[];
-  created_at?: string;
-}
-
-const DEFAULT_TIMELINE: TimelineEvent[] = [];
 
 const typeIcons: Record<string, any> = {
   first_meet: Heart,
@@ -28,90 +15,47 @@ const typeIcons: Record<string, any> = {
 };
 
 export default function Timeline() {
-  const { t, lang, profile } = useApp();
-  const [events, setEvents] = useState<TimelineEvent[]>(() => {
-    const saved = localStorage.getItem('cuongisme_timeline');
-    return saved ? JSON.parse(saved) : DEFAULT_TIMELINE;
-  });
+  const { t, lang } = useApp();
+  const { events, addEvent, deleteEvent } = useTimeline();
+  
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({
     title: '',
     date: new Date().toISOString().split('T')[0],
-    event_type: 'custom',
-    story: '',
+    category: 'custom',
+    description: '',
     location: '',
   });
 
-  useEffect(() => {
-    supabase
-      .from('timeline_events')
-      .select('*')
-      .order('date', { ascending: true })
-      .then(({ data, error }) => {
-        if (!error && data && data.length > 0) {
-          setEvents(data);
-          localStorage.setItem('cuongisme_timeline', JSON.stringify(data));
-        }
-      });
-  }, []);
-
-  const addEvent = async () => {
+  const handleAddEvent = async () => {
     if (!form.title || !form.date) return;
-
-    const newEntry: TimelineEvent = {
-      id: 'local-' + Date.now(),
-      couple_id: profile?.id,
-      ...form,
-      photos: [],
-      created_at: new Date().toISOString(),
-    } as any;
-
-    const updated = [...events, newEntry].sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-    setEvents(updated);
-    localStorage.setItem('cuongisme_timeline', JSON.stringify(updated));
-    setShowAdd(false);
-    setForm({
-      title: '',
-      date: new Date().toISOString().split('T')[0],
-      event_type: 'custom',
-      story: '',
-      location: '',
-    });
-
     try {
-      const { data } = await supabase
-        .from('timeline_events')
-        .insert({
-          title: form.title,
-          date: form.date,
-          event_type: form.event_type,
-          story: form.story,
-          location: form.location,
-          couple_id: profile?.id && profile.id !== 'default-profile' ? profile.id : undefined,
-        })
-        .select()
-        .maybeSingle();
-
-      if (data) {
-        setEvents((prev) => prev.map((e) => (e.id === newEntry.id ? data : e)));
-      }
-    } catch (e) {
-      console.warn('Saved timeline milestone locally');
+      await addEvent({
+        title: form.title,
+        date: form.date,
+        category: form.category,
+        description: form.description,
+        icon: form.category
+      });
+      setShowAdd(false);
+      setForm({
+        title: '',
+        date: new Date().toISOString().split('T')[0],
+        category: 'custom',
+        description: '',
+        location: '',
+      });
+    } catch (err) {
+      console.error(err);
     }
   };
 
-  const deleteEvent = async (id: string) => {
+  const handleDeleteEvent = async (id: string) => {
     if (!confirm('Bạn có chắc chắn muốn xóa cột mốc này không?')) return;
-    const updated = events.filter((e) => e.id !== id);
-    setEvents(updated);
-    localStorage.setItem('cuongisme_timeline', JSON.stringify(updated));
-
     try {
-      await supabase.from('timeline_events').delete().eq('id', id);
-    } catch (e) {
-      console.warn('Deleted timeline milestone locally');
+      await deleteEvent(id);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -148,7 +92,7 @@ export default function Timeline() {
         {/* 4D Temporal Axis Continuum */}
         <div className="relative pl-7 sm:pl-9 ml-2 border-l border-white/10 space-y-8">
           {events.map((event, i) => {
-            const IconComponent = typeIcons[event.event_type] || Clock;
+            const IconComponent = typeIcons[event.category] || Clock;
             return (
               <motion.div
                 key={event.id}
@@ -182,7 +126,7 @@ export default function Timeline() {
 
                     <button
                       type="button"
-                      onClick={() => deleteEvent(event.id)}
+                      onClick={() => handleDeleteEvent(event.id)}
                       className="p-2 rounded-xl opacity-0 group-hover/card:opacity-100 hover:bg-rose-500/10 text-zinc-500 hover:text-rose-400 transition"
                       title="Xóa cột mốc"
                     >
@@ -190,30 +134,20 @@ export default function Timeline() {
                     </button>
                   </div>
 
-                  {event.story && (
+                  {event.description && (
                     <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed mt-2.5 whitespace-pre-wrap">
-                      {event.story}
+                      {event.description}
                     </p>
                   )}
 
-                  {event.location && (
-                    <div className="flex items-center gap-1.5 mt-4 text-xs font-mono text-zinc-400">
-                      <MapPin className="w-3.5 h-3.5 text-[#E5A93C]" />
-                      <span>{event.location}</span>
-                    </div>
-                  )}
-
-                  {event.photos && event.photos.length > 0 && (
+                  {event.image_url && (
                     <div className="flex gap-3 mt-4 overflow-x-auto pb-1">
-                      {event.photos.map((url: string, j: number) => (
                         <img
-                          key={j}
-                          src={url}
+                          src={event.image_url}
                           alt=""
                           className="w-24 h-24 rounded-2xl object-cover border border-white/10"
                           loading="lazy"
                         />
-                      ))}
                     </div>
                   )}
                 </div>
@@ -292,8 +226,8 @@ export default function Timeline() {
                         Loại sự kiện
                       </label>
                       <select
-                        value={form.event_type}
-                        onChange={(e) => setForm((p) => ({ ...p, event_type: e.target.value }))}
+                        value={form.category}
+                        onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
                         className="w-full px-3 py-2.5 bg-zinc-900 rounded-xl text-xs text-zinc-100 border border-white/10 outline-none"
                       >
                         <option value="first_meet">Lần đầu gặp gỡ</option>
@@ -324,8 +258,8 @@ export default function Timeline() {
                       Câu chuyện kể lại
                     </label>
                     <textarea
-                      value={form.story}
-                      onChange={(e) => setForm((p) => ({ ...p, story: e.target.value }))}
+                      value={form.description}
+                      onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
                       placeholder="Viết lại những cảm xúc khó quên..."
                       rows={3}
                       className="w-full px-4 py-2.5 bg-zinc-900/90 rounded-xl text-xs text-zinc-100 border border-white/10 outline-none resize-none focus:border-[#E5A93C] transition leading-relaxed"
@@ -342,7 +276,7 @@ export default function Timeline() {
                     </button>
                     <button
                       type="button"
-                      onClick={addEvent}
+                      onClick={handleAddEvent}
                       disabled={!form.title || !form.date}
                       className="flex-1 py-2.5 bg-zinc-100 hover:bg-white text-zinc-950 font-semibold rounded-xl text-xs transition disabled:opacity-40 shadow-md"
                     >

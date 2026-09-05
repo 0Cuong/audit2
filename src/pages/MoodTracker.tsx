@@ -1,19 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Smile, TrendingUp, Trash2 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
-import { supabase } from '../lib/supabase';
+import { useMoods } from '../data/domain/useMoods';
 import { formatDateLocale } from '../lib/dateUtils';
-
-interface MoodEntry {
-  id: string;
-  mood: string;
-  note?: string;
-  partner?: string;
-  created_at: string;
-}
-
-const DEFAULT_MOODS: MoodEntry[] = [];
 
 const moods = [
   { key: 'loved', emoji: '🥰', label: 'Ngập tràn yêu', bg: 'bg-rose-500/15', text: 'text-rose-400', bar: 'bg-rose-500' },
@@ -26,65 +16,30 @@ const moods = [
 
 export default function MoodTracker() {
   const { t, tc, profile, lang } = useApp();
-  const [entries, setEntries] = useState<MoodEntry[]>(() => {
-    const saved = localStorage.getItem('cuongisme_moods');
-    return saved ? JSON.parse(saved) : DEFAULT_MOODS;
-  });
+  const { moods: entries, addMood, deleteMood } = useMoods();
+  
   const [note, setNote] = useState('');
   const [selectedPartner, setSelectedPartner] = useState<'partner1' | 'partner2'>('partner1');
 
-  useEffect(() => {
-    supabase
-      .from('mood_entries')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(30)
-      .then(({ data, error }) => {
-        if (!error && data && data.length > 0) {
-          setEntries(data);
-          localStorage.setItem('cuongisme_moods', JSON.stringify(data));
-        }
-      });
-  }, []);
-
   const logMood = async (moodKey: string) => {
-    const newEntry: MoodEntry = {
-      id: 'local-' + Date.now(),
-      mood: moodKey,
-      note: note.trim() || undefined,
-      partner: selectedPartner,
-      created_at: new Date().toISOString(),
-    };
-
-    const updated = [newEntry, ...entries];
-    setEntries(updated);
-    localStorage.setItem('cuongisme_moods', JSON.stringify(updated));
-    setNote('');
-
     try {
-      const { data } = await supabase.from('mood_entries').insert({
+      await addMood({
         mood: moodKey,
-        note: note.trim() || null,
+        note: note.trim() || undefined,
         partner: selectedPartner,
-      }).select().maybeSingle();
-
-      if (data) {
-        setEntries(prev => prev.map(m => m.id === newEntry.id ? data : m));
-      }
-    } catch (e) {
-      // Local
+        date: new Date().toISOString(),
+      });
+      setNote('');
+    } catch (err) {
+      console.error(err);
     }
   };
 
   const deleteEntry = async (id: string) => {
-    const updated = entries.filter(e => e.id !== id);
-    setEntries(updated);
-    localStorage.setItem('cuongisme_moods', JSON.stringify(updated));
-
     try {
-      await supabase.from('mood_entries').delete().eq('id', id);
-    } catch (e) {
-      // Local
+      await deleteMood(id);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -231,7 +186,7 @@ export default function MoodTracker() {
 
                   <div className="flex items-center gap-2 shrink-0">
                     <span className={`text-[11px] font-mono ${tc.textMuted}`}>
-                      {formatDateLocale(e.created_at, lang)}
+                      {formatDateLocale(e.date, lang)}
                     </span>
                     <button 
                       onClick={() => deleteEntry(e.id)}

@@ -136,10 +136,14 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
     const stored = safeGetStorage<any>('cuongisme_p_identity', DEFAULT_IDENTITY);
     if (stored && typeof stored === 'object') {
       const clean = { ...stored };
-      delete clean.relationshipStart;
+      delete clean.relationshipStart; // Migrated to CoupleProfile
+      delete clean.partner1; // Migrated to CoupleProfile
+      delete clean.partner2; // Migrated to CoupleProfile
+      delete clean.brandName; // Use CoupleProfile names
+      delete clean.tagline; // Let app manage this or empty string
       return clean as PersonalIdentity;
     }
-    return DEFAULT_IDENTITY;
+    return { id: 'p-id-1', primaryColor: 'amber' } as any; // Strip all personal defaults
   });
   const [workspaces, setWorkspaces] = useState<Workspace[]>(() =>
     safeGetStorage('cuongisme_p_workspaces', DEFAULT_WORKSPACES)
@@ -154,26 +158,7 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
     safeGetStorage('cuongisme_p_navigation', DEFAULT_NAVIGATION)
   );
   const [assets, setAssets] = useState<UserAsset[]>(() =>
-    safeGetStorage('cuongisme_p_assets', [
-      {
-        id: 'asset-default-1',
-        name: 'Partner 1 Avatar',
-        category: 'avatar',
-        url: DEFAULT_IDENTITY.partner1Avatar,
-        tags: ['avatar', 'cuong'],
-        isFavorite: true,
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: 'asset-default-2',
-        name: 'Partner 2 Avatar',
-        category: 'avatar',
-        url: DEFAULT_IDENTITY.partner2Avatar,
-        tags: ['avatar', 'nghi'],
-        isFavorite: true,
-        createdAt: new Date().toISOString(),
-      },
-    ])
+    safeGetStorage('cuongisme_p_assets', [])
   );
   const [savedViews, setSavedViews] = useState<SavedView[]>(() =>
     safeGetStorage('cuongisme_p_saved_views', [])

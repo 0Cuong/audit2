@@ -87,8 +87,8 @@ export default function SettingsPage() {
   // Profile States
   const [p1Name, setP1Name] = useState(profile?.partner1_name || identity.partner1Name || '');
   const [p2Name, setP2Name] = useState(profile?.partner2_name || identity.partner2Name || '');
-  const [p1Bday, setP1Bday] = useState(profile?.partner1_birthday || '2004-09-12');
-  const [p2Bday, setP2Bday] = useState(profile?.partner2_birthday || '2005-01-03');
+  const [p1Bday, setP1Bday] = useState(profile?.partner1_birthday || '');
+  const [p2Bday, setP2Bday] = useState(profile?.partner2_birthday || '');
   const [relStart, setRelStart] = useState(() => formatDateTimeForInput(profile?.relationship_start));
   const [relStatus, setRelStatus] = useState(profile?.relationship_status || 'dating');
   

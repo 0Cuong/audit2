@@ -1,54 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Check, Plane, Sparkles, Target, Star, Trash2, Loader2, X, Camera } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
+import { useBucket } from '../data/domain/useBucket';
 import { supabase } from '../lib/supabase';
 import type { LucideIcon } from 'lucide-react';
-
-interface BucketItem {
-  id: string;
-  created_at?: string;
-  title: string;
-  category: 'travel' | 'experiences' | 'life' | 'dreams';
-  description?: string;
-  is_completed: boolean;
-  completed_at?: string | null;
-  couple_id?: string;
-  image_url?: string | null;
-}
-
-const DEFAULT_BUCKET: BucketItem[] = [
-  {
-    id: 'b-1',
-    title: 'Cùng nhau đi ngắm tuyết rơi ở Sapa',
-    category: 'travel',
-    description: 'Nắm tay nhau đi dạo giữa trời đông tuyết trắng xóa và thưởng thức nồi lẩu nóng hổi.',
-    is_completed: true,
-    completed_at: '2024-12-25T00:00:00.000Z',
-  },
-  {
-    id: 'b-2',
-    title: 'Học nấu một bữa tối lãng mạn cho nhau',
-    category: 'experiences',
-    description: 'Tự tay chuẩn bị món bít tết và tráng miệng bánh ngọt ngọt ngào.',
-    is_completed: true,
-    completed_at: '2024-10-15T00:00:00.000Z',
-  },
-  {
-    id: 'b-3',
-    title: 'Đón giao thừa và ngắm pháo hoa bên nhau',
-    category: 'life',
-    description: 'Cùng đếm ngược chào năm mới trong vòng tay ấm áp của nhau.',
-    is_completed: false,
-  },
-  {
-    id: 'b-4',
-    title: 'Cùng xây dựng một tổ ấm nhỏ tràn ngập tiếng cười',
-    category: 'dreams',
-    description: 'Một ngôi nhà nhỏ xinh với ban công đầy hoa và hai đứa cùng một chú mèo cưng.',
-    is_completed: false,
-  }
-];
 
 const bucketCategories = ['all', 'travel', 'experiences', 'life', 'dreams'] as const;
 type CategoryType = typeof bucketCategories[number];
@@ -62,13 +18,10 @@ const catIcons: Record<Exclude<CategoryType, 'all'>, LucideIcon> = {
 
 export default function BucketList() {
   const { t, tc, profile } = useApp();
-  const [items, setItems] = useState<BucketItem[]>(() => {
-    const saved = localStorage.getItem('cuongisme_bucket');
-    return saved ? JSON.parse(saved) : DEFAULT_BUCKET;
-  });
+  const { items, isLoading, addItem, updateItem, deleteItem } = useBucket();
+  
   const [cat, setCat] = useState<CategoryType>('all');
   const [showAdd, setShowAdd] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   
@@ -81,27 +34,6 @@ export default function BucketList() {
     description: '',
     image_url: '' 
   });
-
-  useEffect(() => {
-    setIsLoading(true);
-    (async () => {
-      try {
-        const { data, error } = await supabase
-          .from('bucket_list_items')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (!error && data && data.length > 0) {
-          setItems(data);
-          localStorage.setItem('cuongisme_bucket', JSON.stringify(data));
-        }
-      } catch (err) {
-        console.warn('Using local bucket list');
-      } finally {
-        setIsLoading(false);
-      }
-    })();
-  }, []);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
@@ -141,81 +73,49 @@ export default function BucketList() {
     }
   };
 
-  const addItem = async () => {
+  const handleAddItem = async () => {
     if (!form.title || isSubmitting) return;
     setIsSubmitting(true);
 
-    const newItem: BucketItem = {
-      id: 'local-' + Date.now(),
-      title: form.title,
-      category: form.category,
-      description: form.description,
-      image_url: form.image_url || null,
-      couple_id: profile?.id,
-      is_completed: false,
-      created_at: new Date().toISOString(),
-    };
-
-    const updated = [newItem, ...items];
-    setItems(updated);
-    localStorage.setItem('cuongisme_bucket', JSON.stringify(updated));
-    setShowAdd(false);
-    setForm({ title: '', category: 'travel', description: '', image_url: '' });
-    setIsSubmitting(false);
-
     try {
-      const { data } = await supabase
-        .from('bucket_list_items')
-        .insert({
-          title: form.title,
-          category: form.category,
-          description: form.description,
-          image_url: form.image_url || null,
-          couple_id: profile?.id && profile.id !== 'default-profile' ? profile.id : undefined,
-          is_completed: false
-        })
-        .select()
-        .maybeSingle();
-
-      if (data) {
-        setItems(prev => prev.map(i => i.id === newItem.id ? data : i));
-      }
-    } catch (error) {
-      console.warn('Saved bucket item locally');
+      await addItem({
+        title: form.title,
+        category: form.category,
+        description: form.description || undefined,
+        image_url: form.image_url || undefined,
+        is_completed: false,
+      });
+      setShowAdd(false);
+      setForm({ title: '', category: 'travel', description: '', image_url: '' });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const toggleComplete = async (id: string, completed: boolean) => {
+  const handleToggleComplete = async (id: string, completed: boolean) => {
     if (togglingId === id) return;
     setTogglingId(id);
 
-    const update = completed 
-      ? { is_completed: false, completed_at: null } 
-      : { is_completed: true, completed_at: new Date().toISOString() };
-
-    const updated = items.map(i => i.id === id ? { ...i, ...update } : i);
-    setItems(updated);
-    localStorage.setItem('cuongisme_bucket', JSON.stringify(updated));
-
     try {
-      await supabase.from('bucket_list_items').update(update).eq('id', id);
+      await updateItem(id, { 
+        is_completed: !completed,
+        completed_at: !completed ? new Date().toISOString() : null
+      });
     } catch (err) {
-      // Local
+      console.error(err);
     } finally {
       setTogglingId(null);
     }
   };
 
-  const deleteItem = async (id: string) => {
+  const handleDeleteItem = async (id: string) => {
     if (!confirm('Bạn có chắc chắn muốn xóa mục tiêu này khỏi danh sách?')) return;
-    const updated = items.filter(item => item.id !== id);
-    setItems(updated);
-    localStorage.setItem('cuongisme_bucket', JSON.stringify(updated));
-
     try {
-      await supabase.from('bucket_list_items').delete().eq('id', id);
+      await deleteItem(id);
     } catch (err) {
-      // Local
+      console.error(err);
     }
   };
 
@@ -329,7 +229,7 @@ export default function BucketList() {
                     {/* Action buttons */}
                     <div className="flex flex-col items-center justify-between gap-3 shrink-0">
                       <button 
-                        onClick={() => toggleComplete(item.id, item.is_completed)}
+                        onClick={() => handleToggleComplete(item.id, item.is_completed)}
                         disabled={togglingId === item.id}
                         className={`w-7 h-7 rounded-xl border flex items-center justify-center transition-all ${
                           item.is_completed 
@@ -342,7 +242,7 @@ export default function BucketList() {
                       </button>
 
                       <button 
-                        onClick={() => deleteItem(item.id)}
+                        onClick={() => handleDeleteItem(item.id)}
                         className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-rose-500/10 text-zinc-400 hover:text-rose-400 transition"
                         title="Xóa mục tiêu"
                       >
@@ -478,7 +378,7 @@ export default function BucketList() {
                   </button>
                   <button 
                     type="button" 
-                    onClick={addItem} 
+                    onClick={handleAddItem} 
                     disabled={isSubmitting || !form.title || uploading}
                     className="flex-1 py-2.5 gradient-accent rounded-xl text-sm text-white font-semibold hover:opacity-95 transition disabled:opacity-50 flex items-center justify-center gap-2 shadow-md"
                   >

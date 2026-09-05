@@ -22,26 +22,14 @@ interface NoteItem {
 export default function Contact() {
   const { t, profile } = useApp();
 
-  const p1Name = profile?.partner1_name || 'Mạnh Cường';
-  const p2Name = profile?.partner2_name || 'Xuân Nghi';
+  const p1Name = profile?.partner1_name || '';
+  const p2Name = profile?.partner2_name || '';
 
-  const p1Avatar =
-    profile?.partner1_avatar ||
-    '/590610904_1909263110009109_2160755825373491978_n.jpg';
-
-  const p2Avatar =
-    profile?.partner2_avatar ||
-    '/605572670_122215932062047100_7842864668271503382_n.jpg';
+  const p1Avatar = profile?.partner1_avatar || '';
+  const p2Avatar = profile?.partner2_avatar || '';
 
   const [notes, setNotes] = useState<NoteItem[]>(() => {
-    return safeGetStorage<NoteItem[]>('cuongisme_contact_notes', [
-      {
-        id: 'note-sample-1',
-        sender: 'Xuân Nghi',
-        content: 'Chào mừng bạn ghé thăm không gian lưu giữ tình yêu của tụi mình!',
-        created_at: '2024-05-18T10:00:00.000Z',
-      },
-    ]);
+    return safeGetStorage<NoteItem[]>('cuongisme_contact_notes', []);
   });
 
   const [senderName, setSenderName] = useState('');
