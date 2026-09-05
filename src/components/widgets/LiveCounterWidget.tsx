@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Heart } from 'lucide-react';
+import { Heart, Clock } from 'lucide-react';
+import { useApp } from '../../contexts/AppContext';
 import { usePersonalization } from '../../contexts/PersonalizationContext';
 import { calculateTimeTogether } from '../../lib/dateUtils';
 import { type WorkspaceBlock } from '../../types/personalization';
@@ -10,15 +12,18 @@ interface LiveCounterWidgetProps {
 }
 
 export default function LiveCounterWidget({ block: _block }: LiveCounterWidgetProps) {
+  const { profile } = useApp();
   const { identity } = usePersonalization();
-  const [time, setTime] = useState(() => calculateTimeTogether(identity.relationshipStart));
+
+  const startDate = profile?.relationship_start;
+  const [time, setTime] = useState(() => calculateTimeTogether(startDate));
 
   useEffect(() => {
-    const tick = () => setTime(calculateTimeTogether(identity.relationshipStart));
+    const tick = () => setTime(calculateTimeTogether(startDate));
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [identity.relationshipStart]);
+  }, [startDate]);
 
   const counters = [
     { value: time.years, label: 'NĂM' },
@@ -26,6 +31,11 @@ export default function LiveCounterWidget({ block: _block }: LiveCounterWidgetPr
     { value: time.days, label: 'NGÀY' },
     { value: time.hours, label: 'GIỜ' },
   ];
+
+  const partner1Name = profile?.partner1_name || identity.partner1Name || 'Partner 1';
+  const partner2Name = profile?.partner2_name || identity.partner2Name || 'Partner 2';
+  const partner1Avatar = profile?.partner1_avatar || identity.partner1Avatar;
+  const partner2Avatar = profile?.partner2_avatar || identity.partner2Avatar;
 
   return (
     <section className="text-center py-4 relative select-none">
@@ -38,10 +48,10 @@ export default function LiveCounterWidget({ block: _block }: LiveCounterWidgetPr
         <div className="flex items-center justify-center gap-3 sm:gap-4 mb-3">
           {/* Partner 1 */}
           <div className="flex items-center gap-2.5 bg-zinc-900/80 border border-white/10 px-3.5 py-1.5 rounded-full shadow-lg backdrop-blur-md">
-            {identity.partner1Avatar ? (
+            {partner1Avatar ? (
               <img
-                src={identity.partner1Avatar}
-                alt={identity.partner1Name}
+                src={partner1Avatar}
+                alt={partner1Name}
                 className="w-8 h-8 rounded-full object-cover border border-white/20"
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
@@ -49,11 +59,11 @@ export default function LiveCounterWidget({ block: _block }: LiveCounterWidgetPr
               />
             ) : (
               <div className="w-8 h-8 rounded-full bg-zinc-800 border border-white/20 flex items-center justify-center text-white font-pixel text-xs">
-                {identity.partner1Name?.charAt(0) || 'M'}
+                {partner1Name?.charAt(0) || 'M'}
               </div>
             )}
             <span className="text-sm sm:text-base font-bold tracking-wide text-zinc-100">
-              {identity.partner1Name || 'Partner 1'}
+              {partner1Name}
             </span>
           </div>
 
@@ -70,12 +80,12 @@ export default function LiveCounterWidget({ block: _block }: LiveCounterWidgetPr
           {/* Partner 2 */}
           <div className="flex items-center gap-2.5 bg-zinc-900/80 border border-white/10 px-3.5 py-1.5 rounded-full shadow-lg backdrop-blur-md">
             <span className="text-sm sm:text-base font-bold tracking-wide text-zinc-100">
-              {identity.partner2Name || 'Partner 2'}
+              {partner2Name}
             </span>
-            {identity.partner2Avatar ? (
+            {partner2Avatar ? (
               <img
-                src={identity.partner2Avatar}
-                alt={identity.partner2Name}
+                src={partner2Avatar}
+                alt={partner2Name}
                 className="w-8 h-8 rounded-full object-cover border border-white/20"
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
@@ -83,7 +93,7 @@ export default function LiveCounterWidget({ block: _block }: LiveCounterWidgetPr
               />
             ) : (
               <div className="w-8 h-8 rounded-full bg-zinc-800 border border-white/20 flex items-center justify-center text-white font-pixel text-xs">
-                {identity.partner2Name?.charAt(0) || 'N'}
+                {partner2Name?.charAt(0) || 'N'}
               </div>
             )}
           </div>
@@ -126,6 +136,19 @@ export default function LiveCounterWidget({ block: _block }: LiveCounterWidgetPr
               {String(time.minutes).padStart(2, '0')}:{String(time.seconds).padStart(2, '0')}s
             </span>
           </div>
+        </div>
+      )}
+
+      {/* Setup Prompt if not configured */}
+      {!startDate && (
+        <div className="mt-4 flex items-center justify-center">
+          <Link
+            to="/settings"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-xs font-mono text-rose-300 hover:bg-rose-500/20 transition"
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>Thiết lập ngày bắt đầu yêu trong Cài đặt</span>
+          </Link>
         </div>
       )}
     </section>

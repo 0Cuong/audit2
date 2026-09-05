@@ -124,15 +124,23 @@ const PersonalizationContext = createContext<PersonalizationContextValue | null>
 
 export function PersonalizationProvider({ children }: { children: ReactNode }) {
   // 1. Core States with safe localStorage fallback
+  const isHydratedRef = useRef(false);
+
   const [appearance, setAppearance] = useState<AppearanceTheme>(() =>
     safeGetStorage('cuongisme_p_appearance', DEFAULT_APPEARANCE)
   );
   const [background, setBackground] = useState<BackgroundConfig>(() =>
     safeGetStorage('cuongisme_p_background', DEFAULT_BACKGROUND)
   );
-  const [identity, setIdentity] = useState<PersonalIdentity>(() =>
-    safeGetStorage('cuongisme_p_identity', DEFAULT_IDENTITY)
-  );
+  const [identity, setIdentity] = useState<PersonalIdentity>(() => {
+    const stored = safeGetStorage<any>('cuongisme_p_identity', DEFAULT_IDENTITY);
+    if (stored && typeof stored === 'object') {
+      const clean = { ...stored };
+      delete clean.relationshipStart;
+      return clean as PersonalIdentity;
+    }
+    return DEFAULT_IDENTITY;
+  });
   const [workspaces, setWorkspaces] = useState<Workspace[]>(() =>
     safeGetStorage('cuongisme_p_workspaces', DEFAULT_WORKSPACES)
   );
@@ -240,9 +248,13 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
   const scheduleSave = useCallback(() => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(async () => {
+      // Ensure identity is always stripped of obsolete relationshipStart
+      const cleanIdentity = { ...identity };
+      delete (cleanIdentity as any).relationshipStart;
+
       safeSetStorage('cuongisme_p_appearance', appearance);
       safeSetStorage('cuongisme_p_background', background);
-      safeSetStorage('cuongisme_p_identity', identity);
+      safeSetStorage('cuongisme_p_identity', cleanIdentity);
       safeSetStorage('cuongisme_p_workspaces', workspaces);
       safeSetStorage('cuongisme_p_active_ws', activeWorkspaceId);
       safeSetStorage('cuongisme_p_custom_pages', customPages);
@@ -258,7 +270,7 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
               id: '00000000-0000-0000-0000-000000000001',
               appearance,
               background,
-              identity,
+              identity: cleanIdentity,
               navigation,
               active_workspace_id: activeWorkspaceId,
               updated_at: new Date().toISOString(),
@@ -284,12 +296,16 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
   ]);
 
   useEffect(() => {
+    if (!isHydratedRef.current) return;
     scheduleSave();
   }, [scheduleSave]);
 
   // Load Remote Personalization on init
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
+    if (!isSupabaseConfigured) {
+      isHydratedRef.current = true;
+      return;
+    }
     (async () => {
       try {
         const { data, error } = await supabase
@@ -301,12 +317,18 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
         if (!error && data) {
           if (data.appearance) setAppearance(data.appearance);
           if (data.background) setBackground(data.background);
-          if (data.identity) setIdentity(data.identity);
+          if (data.identity) {
+            const clean = { ...data.identity };
+            delete clean.relationshipStart;
+            setIdentity(clean);
+          }
           if (data.navigation) setNavigation(data.navigation);
           if (data.active_workspace_id) setActiveWorkspaceId(data.active_workspace_id);
         }
       } catch (err) {
         console.warn('[Personalization] Using local cached state');
+      } finally {
+        isHydratedRef.current = true;
       }
     })();
   }, []);
@@ -401,7 +423,11 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateIdentity = useCallback((updates: Partial<PersonalIdentity>) => {
-    setIdentity((prev) => ({ ...prev, ...updates }));
+    setIdentity((prev) => {
+      const merged = { ...prev, ...updates };
+      delete (merged as any).relationshipStart;
+      return merged;
+    });
   }, []);
 
   // 6. Workspace Operations

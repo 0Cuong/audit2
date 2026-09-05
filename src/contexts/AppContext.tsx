@@ -148,7 +148,7 @@ export const DEFAULT_PROFILE: CoupleProfile = {
   partner2_gender: 'female',
   partner2_birthday: '2005-01-03',
   relationship_status: 'dating',
-  relationship_start: '2024-05-18T00:00:00.000Z',
+  relationship_start: '',
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -166,6 +166,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
   notifications_enabled: true,
 };
 
+export interface UpdateProfileResult {
+  success: boolean;
+  error?: string | null;
+}
+
 // --- Context ---
 interface AppContextValue {
   lang: Lang;
@@ -176,7 +181,7 @@ interface AppContextValue {
   tc: typeof themeConfig[ThemeId];
   profile: CoupleProfile | null;
   setProfile: (p: CoupleProfile) => void;
-  updateProfile: (updates: Partial<CoupleProfile>) => Promise<boolean>;
+  updateProfile: (updates: Partial<CoupleProfile>) => Promise<UpdateProfileResult>;
   settings: AppSettings | null;
   loading: boolean;
   refreshProfile: () => Promise<void>;
@@ -215,7 +220,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     safeSetStorage('cuongisme_profile', p);
   }, []);
 
-
   const refreshProfile = useCallback(async () => {
     if (!isSupabaseConfigured) return;
     try {
@@ -250,31 +254,95 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const updateProfile = useCallback(async (updates: Partial<CoupleProfile>): Promise<boolean> => {
-    const updated = { ...profile, ...updates };
+  const updateProfile = useCallback(async (updates: Partial<CoupleProfile>): Promise<UpdateProfileResult> => {
+    // 1. Optimistically apply updates to local state and storage
+    const updated = { ...profile, ...updates } as CoupleProfile;
     setProfileState(updated);
     safeSetStorage('cuongisme_profile', updated);
 
-    if (!isSupabaseConfigured || !profile?.id || profile.id === DEFAULT_PROFILE.id) {
-      return true;
+    if (!isSupabaseConfigured) {
+      return { success: true, error: null };
     }
 
     try {
-      const { data, error } = await supabase
-        .from('couple_profile')
-        .update(updates)
-        .eq('id', profile.id)
-        .select()
-        .single();
+      // Clean payload for Postgres
+      const payload: Record<string, any> = { ...updates, updated_at: new Date().toISOString() };
+      delete payload.id; // Never overwrite UUID
 
-      if (!error && data) {
-        setProfileState(data);
-        safeSetStorage('cuongisme_profile', data);
+      let remoteRecord: CoupleProfile | null = null;
+      const targetId = profile?.id && profile.id !== DEFAULT_PROFILE.id ? profile.id : null;
+
+      if (targetId) {
+        const { data, error } = await supabase
+          .from('couple_profile')
+          .update(payload)
+          .eq('id', targetId)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('[AppContext] Supabase couple_profile update error:', error);
+          return { success: false, error: error.message };
+        }
+        remoteRecord = data as CoupleProfile;
+      } else {
+        // Probe for an existing row in couple_profile
+        const { data: existing, error: findError } = await supabase
+          .from('couple_profile')
+          .select('id')
+          .limit(1)
+          .maybeSingle();
+
+        if (findError) {
+          console.error('[AppContext] Failed to verify couple_profile existence:', findError);
+          return { success: false, error: findError.message };
+        }
+
+        if (existing?.id) {
+          const { data, error } = await supabase
+            .from('couple_profile')
+            .update(payload)
+            .eq('id', existing.id)
+            .select()
+            .single();
+
+          if (error) {
+            console.error('[AppContext] Failed to update existing couple_profile:', error);
+            return { success: false, error: error.message };
+          }
+          remoteRecord = data as CoupleProfile;
+        } else {
+          // No row exists in table yet, insert initial canonical row
+          const insertPayload = {
+            ...DEFAULT_PROFILE,
+            ...updated,
+            ...payload,
+          };
+          delete (insertPayload as any).id;
+
+          const { data, error } = await supabase
+            .from('couple_profile')
+            .insert(insertPayload)
+            .select()
+            .single();
+
+          if (error) {
+            console.error('[AppContext] Failed to insert initial couple_profile:', error);
+            return { success: false, error: error.message };
+          }
+          remoteRecord = data as CoupleProfile;
+        }
       }
-      return true;
-    } catch (error) {
-      console.warn('[AppContext] Saved profile locally (remote sync unavailable)');
-      return true;
+
+      if (remoteRecord) {
+        setProfileState(remoteRecord);
+        safeSetStorage('cuongisme_profile', remoteRecord);
+      }
+
+      return { success: true, error: null };
+    } catch (err: any) {
+      console.error('[AppContext] Network / unexpected error updating couple_profile:', err);
+      return { success: false, error: err?.message || 'Network error updating profile' };
     }
   }, [profile]);
 
@@ -284,6 +352,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const initialize = async () => {
       try {
+        // Backward-compatibility: Check if user previously had relationshipStart in cuongisme_p_identity
+        try {
+          const cachedProfile = safeGetStorage<CoupleProfile>('cuongisme_profile', DEFAULT_PROFILE);
+          if (!cachedProfile.relationship_start || cachedProfile.relationship_start === '2024-05-18T00:00:00.000Z') {
+            const legacyIdentity = safeGetStorage<any>('cuongisme_p_identity', null);
+            if (legacyIdentity?.relationshipStart && legacyIdentity.relationshipStart !== '2024-05-18T00:00:00.000Z') {
+              const migrated = { ...cachedProfile, relationship_start: legacyIdentity.relationshipStart };
+              setProfileState(migrated);
+              safeSetStorage('cuongisme_profile', migrated);
+            } else if (cachedProfile.relationship_start === '2024-05-18T00:00:00.000Z') {
+              // Sanitize old hardcoded default from local cache
+              const sanitized = { ...cachedProfile, relationship_start: '' };
+              setProfileState(sanitized);
+              safeSetStorage('cuongisme_profile', sanitized);
+            }
+          }
+        } catch {
+          // Ignore migration read error
+        }
+
         if (isSupabaseConfigured) {
           // Wrap remote queries with a strict timeout so network stalls can never hang initialization
           const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 2000));

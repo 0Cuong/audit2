@@ -86,7 +86,8 @@ export interface PersonalIdentity {
   statusEmoji: string;
   statusMessage: string;
   badge: string;
-  relationshipStart: string;
+  /** @deprecated Canonical relationship start date is stored in couple_profile.relationship_start */
+  relationshipStart?: string;
   relationshipStatus: string;
   profileAccent: string;
   profileLayout: 'banner_left' | 'banner_center' | 'minimal' | 'cards';
@@ -330,7 +331,6 @@ export const DEFAULT_IDENTITY: PersonalIdentity = {
   statusEmoji: '💖',
   statusMessage: 'Bên nhau mãi mãi',
   badge: 'Couple Platinum',
-  relationshipStart: '2024-05-18T00:00:00.000Z',
   relationshipStatus: 'dating',
   profileAccent: '#f43f5e',
   profileLayout: 'banner_center',

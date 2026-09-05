@@ -21,6 +21,7 @@ import {
   MessageSquare, 
   Loader2,
   SlidersHorizontal,
+  AlertCircle,
 } from 'lucide-react';
 import { useApp, type ThemeId, themeConfig } from '../contexts/AppContext';
 import { usePersonalization } from '../contexts/PersonalizationContext';
@@ -84,15 +85,16 @@ export default function SettingsPage() {
   const [tab, setTab] = useState<'profile' | 'appearance' | 'links' | 'privacy'>('profile');
   
   // Profile States
-  const [p1Name, setP1Name] = useState(profile?.partner1_name || identity.partner1Name);
-  const [p2Name, setP2Name] = useState(profile?.partner2_name || identity.partner2Name);
+  const [p1Name, setP1Name] = useState(profile?.partner1_name || identity.partner1Name || '');
+  const [p2Name, setP2Name] = useState(profile?.partner2_name || identity.partner2Name || '');
   const [p1Bday, setP1Bday] = useState(profile?.partner1_birthday || '2004-09-12');
   const [p2Bday, setP2Bday] = useState(profile?.partner2_birthday || '2005-01-03');
-  const [relStart, setRelStart] = useState(() => formatDateTimeForInput(profile?.relationship_start || identity.relationshipStart));
+  const [relStart, setRelStart] = useState(() => formatDateTimeForInput(profile?.relationship_start));
   const [relStatus, setRelStatus] = useState(profile?.relationship_status || 'dating');
   
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   // Links States
   const [contactLinks, setContactLinks] = useState<ContactLink[]>(settings?.contact_links || []);
@@ -114,10 +116,11 @@ export default function SettingsPage() {
   const [privacySaved, setPrivacySaved] = useState(false);
 
   const initializedProfileId = useRef<string | null>(null);
+  const isProfileDirtyRef = useRef(false);
   const initializedSettingsId = useRef<string | null>(null);
 
   useEffect(() => {
-    if (profile && profile.id !== initializedProfileId.current) {
+    if (profile && (!initializedProfileId.current || (profile.id !== initializedProfileId.current && !isProfileDirtyRef.current))) {
       setP1Name(profile.partner1_name || '');
       setP2Name(profile.partner2_name || '');
       setP1Bday(profile.partner1_birthday || '');
@@ -147,29 +150,52 @@ export default function SettingsPage() {
 
   const saveProfile = async () => {
     setIsSavingProfile(true);
-    try {
-      const isoRelStart = relStart ? new Date(relStart).toISOString() : new Date().toISOString();
+    setProfileError(null);
 
-      await updateProfile({
-        partner1_name: p1Name,
-        partner2_name: p2Name,
+    try {
+      if (!relStart.trim()) {
+        setProfileError('Vui lòng chọn ngày và giờ bắt đầu yêu nhau');
+        setIsSavingProfile(false);
+        return;
+      }
+
+      const dateObj = new Date(relStart);
+      if (isNaN(dateObj.getTime())) {
+        setProfileError('Định dạng ngày bắt đầu không hợp lệ');
+        setIsSavingProfile(false);
+        return;
+      }
+
+      const isoRelStart = dateObj.toISOString();
+
+      // Update the authoritative couple_profile source
+      const res = await updateProfile({
+        partner1_name: p1Name.trim(),
+        partner2_name: p2Name.trim(),
         partner1_birthday: p1Bday || null,
         partner2_birthday: p2Bday || null,
         relationship_start: isoRelStart,
         relationship_status: relStatus,
       });
 
+      if (!res.success) {
+        setProfileError(res.error || 'Lưu hồ sơ thất bại. Vui lòng kiểm tra lại kết nối.');
+        return;
+      }
+
+      // Sync display names & status in identity without dual-writing relationshipStart
       updateIdentity({
-        partner1Name: p1Name,
-        partner2Name: p2Name,
-        relationshipStart: isoRelStart,
+        partner1Name: p1Name.trim(),
+        partner2Name: p2Name.trim(),
         relationshipStatus: relStatus,
       });
 
+      isProfileDirtyRef.current = false;
       setProfileSaved(true);
-      setTimeout(() => setProfileSaved(false), 2000);
-    } catch (err) {
+      setTimeout(() => setProfileSaved(false), 2500);
+    } catch (err: any) {
       console.error('Error updating profile:', err);
+      setProfileError(err?.message || 'Đã xảy ra lỗi khi lưu hồ sơ');
     } finally {
       setIsSavingProfile(false);
     }
@@ -314,14 +340,22 @@ export default function SettingsPage() {
                 <input
                   type="text"
                   value={p1Name}
-                  onChange={e => setP1Name(e.target.value)}
+                  onChange={e => {
+                    isProfileDirtyRef.current = true;
+                    setProfileError(null);
+                    setP1Name(e.target.value);
+                  }}
                   placeholder="Tên chàng"
                   className="w-full px-4 py-2.5 glass rounded-xl text-sm text-zinc-100 bg-transparent outline-none border border-white/10 focus:border-rose-500"
                 />
                 <input
                   type="date"
                   value={p1Bday}
-                  onChange={e => setP1Bday(e.target.value)}
+                  onChange={e => {
+                    isProfileDirtyRef.current = true;
+                    setProfileError(null);
+                    setP1Bday(e.target.value);
+                  }}
                   className="w-full px-3 py-2.5 glass rounded-xl text-xs text-zinc-100 bg-transparent outline-none border border-white/10 focus:border-rose-500"
                 />
               </div>
@@ -333,14 +367,22 @@ export default function SettingsPage() {
                 <input
                   type="text"
                   value={p2Name}
-                  onChange={e => setP2Name(e.target.value)}
+                  onChange={e => {
+                    isProfileDirtyRef.current = true;
+                    setProfileError(null);
+                    setP2Name(e.target.value);
+                  }}
                   placeholder="Tên nàng"
                   className="w-full px-4 py-2.5 glass rounded-xl text-sm text-zinc-100 bg-transparent outline-none border border-white/10 focus:border-rose-500"
                 />
                 <input
                   type="date"
                   value={p2Bday}
-                  onChange={e => setP2Bday(e.target.value)}
+                  onChange={e => {
+                    isProfileDirtyRef.current = true;
+                    setProfileError(null);
+                    setP2Bday(e.target.value);
+                  }}
                   className="w-full px-3 py-2.5 glass rounded-xl text-xs text-zinc-100 bg-transparent outline-none border border-white/10 focus:border-rose-500"
                 />
               </div>
@@ -352,12 +394,20 @@ export default function SettingsPage() {
                 <input
                   type="datetime-local"
                   value={relStart}
-                  onChange={e => setRelStart(e.target.value)}
+                  onChange={e => {
+                    isProfileDirtyRef.current = true;
+                    setProfileError(null);
+                    setRelStart(e.target.value);
+                  }}
                   className="w-full px-4 py-2.5 glass rounded-xl text-sm text-zinc-100 bg-transparent outline-none border border-white/10 focus:border-rose-500"
                 />
                 <select
                   value={relStatus}
-                  onChange={e => setRelStatus(e.target.value)}
+                  onChange={e => {
+                    isProfileDirtyRef.current = true;
+                    setProfileError(null);
+                    setRelStatus(e.target.value);
+                  }}
                   className="w-full px-4 py-2.5 glass rounded-xl text-sm bg-neutral-900 text-zinc-100 outline-none border border-white/10"
                 >
                   <option value="dating" className="bg-neutral-900 text-white">Đang hẹn hò (Dating)</option>
@@ -367,6 +417,13 @@ export default function SettingsPage() {
                 </select>
               </div>
             </div>
+
+            {profileError && (
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{profileError}</span>
+              </div>
+            )}
 
             <button
               onClick={saveProfile}

@@ -24,8 +24,8 @@ export default function Footer() {
             >
               <Compass className="w-4 h-4" />
             </motion.div>
-            <span className="font-mono text-xs tracking-[0.2em] text-zinc-300 group-hover:text-white transition-colors uppercase font-bold">
-              CUONGISME
+            <span className="font-serif text-sm tracking-tight text-zinc-300 group-hover:text-white transition-colors">
+              Cường &amp; Nghi
             </span>
           </Link>
 
