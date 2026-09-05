@@ -3,19 +3,35 @@
 @tailwind utilities;
 
 :root {
+  /* Editorial × Private Digital Space Semantic Tokens */
+  --canvas: #09090c;
+  --surface: #111115;
+  --surface-elevated: #17171d;
+  --surface-floating: #1e1e26;
+  --surface-border: rgba(255, 255, 255, 0.08);
+  --surface-border-subtle: rgba(255, 255, 255, 0.04);
+  --surface-border-strong: rgba(255, 255, 255, 0.14);
+
+  --text-display: #ffffff;
+  --text-headline: #f4f4f6;
+  --text-body: #d4d4d8;
+  --text-muted: #8e8e99;
+  --accent-warm: #e5a93c;
+  --accent-rose: #f43f5e;
+
   /* Dynamic Personal OS CSS Custom Variables (Injected & Synchronized at runtime) */
   --p-primary: #f4f4f5;
   --p-secondary: #a1a1aa;
-  --p-accent: #f43f5e;
-  --p-bg: #121214;
-  --p-surface: #18181b;
-  --p-surface-elevated: #222226;
+  --p-accent: #e5a93c;
+  --p-bg: #09090c;
+  --p-surface: #111115;
+  --p-surface-elevated: #17171d;
   --p-text: #f4f4f5;
-  --p-text-muted: #a1a1aa;
+  --p-text-muted: #8e8e99;
   --p-border: rgba(255, 255, 255, 0.08);
-  --p-card-radius: 1.5rem;
+  --p-card-radius: 1.25rem;
   --p-btn-radius: 9999px;
-  --p-input-radius: 0.875rem;
+  --p-input-radius: 0.75rem;
   --p-avatar-radius: 9999px;
   --p-font-family: 'Plus Jakarta Sans', Inter, system-ui, sans-serif;
   --p-heading-font: 'Newsreader', 'Cormorant Garamond', Georgia, serif;
@@ -62,6 +78,41 @@
 }
 
 @layer components {
+  /* Editorial × Private Digital Space Surfaces */
+  .editorial-canvas {
+    background-color: var(--canvas);
+  }
+
+  .editorial-surface {
+    background-color: var(--surface);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--p-card-radius, 1.25rem);
+  }
+
+  .editorial-surface-elevated {
+    background-color: var(--surface-elevated);
+    border: 1px solid var(--surface-border-strong);
+    border-radius: var(--p-card-radius, 1.25rem);
+  }
+
+  .editorial-card {
+    background-color: rgba(17, 17, 21, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 1.25rem;
+    transition: border-color 0.2s ease, transform 0.2s ease;
+  }
+  .editorial-card:hover {
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+
+  .editorial-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
   /* Dynamic Personal OS Glass Surfaces */
   .glass {
     background: rgba(24, 24, 27, 0.65);

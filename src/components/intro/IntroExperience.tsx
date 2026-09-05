@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Heart } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import { parseDateInput } from '../../lib/dateUtils';
 
 export interface IntroExperienceProps {
   onComplete?: () => void;
@@ -21,9 +22,16 @@ export default function IntroExperience({
   const [isVisible, setIsVisible] = useState(true);
   const completedRef = useRef(false);
 
-  const p1 = profile?.partner1_name || 'Cường';
-  const p2 = profile?.partner2_name || 'Nghi';
-  const namesTitle = profile ? `${p1} & ${p2}` : brandName;
+  const p1 = (profile?.partner1_name || 'Cường').toUpperCase();
+  const p2 = (profile?.partner2_name || 'Nghi').toUpperCase();
+  const startDate = profile?.relationship_start;
+
+  const formattedDate = useMemo(() => {
+    if (!startDate) return '18 THÁNG 5, 2026';
+    const d = parseDateInput(startDate);
+    if (!d) return '18 THÁNG 5, 2026';
+    return `${d.getDate()} THÁNG ${d.getMonth() + 1}, ${d.getFullYear()}`;
+  }, [startDate]);
 
   const finish = useCallback(() => {
     if (completedRef.current) return;
@@ -37,7 +45,7 @@ export default function IntroExperience({
     }
     setTimeout(() => {
       onComplete?.();
-    }, 300);
+    }, 350);
   }, [onComplete]);
 
   useEffect(() => {
@@ -57,16 +65,16 @@ export default function IntroExperience({
 
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (prefersReducedMotion) {
-      const t = setTimeout(finish, 1000);
+      const t = setTimeout(finish, 800);
       return () => clearTimeout(t);
     }
 
-    // Step 1: Names emerge at 300ms
-    const t1 = setTimeout(() => setStep(1), 300);
-    // Step 2: Meaningful memory emerges at 1600ms
-    const t2 = setTimeout(() => setStep(2), 1600);
-    // Step 3: Transition into app at 3600ms
-    const t3 = setTimeout(() => finish(), 3800);
+    // Step 1: Emergence of names & date
+    const t1 = setTimeout(() => setStep(1), 400);
+    // Step 2: First memory photograph emerges
+    const t2 = setTimeout(() => setStep(2), 1700);
+    // Step 3: Enter world auto finish
+    const t3 = setTimeout(() => finish(), 4000);
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter') {
@@ -90,20 +98,20 @@ export default function IntroExperience({
       <motion.div
         initial={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.45, ease: 'easeInOut' }}
-        className="fixed inset-0 z-[100] bg-[#0c0c0f] flex flex-col items-center justify-center p-6 select-none cursor-pointer overflow-hidden"
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        className="fixed inset-0 z-[100] bg-[#070709] flex flex-col items-center justify-center p-6 select-none cursor-pointer overflow-hidden"
         onClick={finish}
         role="dialog"
         aria-modal="true"
-        aria-label="Lời chào ban đầu"
+        aria-label="Khởi đầu không gian"
       >
-        {/* Subtle Ambient Background Warmth */}
-        <div className="absolute inset-0 pointer-events-none opacity-40">
-          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-amber-500/10 blur-[120px]" />
-          <div className="absolute bottom-1/4 left-1/2 -translate-x-1/2 w-[400px] h-[400px] rounded-full bg-rose-500/5 blur-[100px]" />
+        {/* Subtle Warm Atmospheric Light */}
+        <div className="absolute inset-0 pointer-events-none opacity-30">
+          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-amber-500/[0.08] blur-[140px]" />
+          <div className="absolute bottom-1/4 left-1/2 -translate-x-1/2 w-[450px] h-[450px] rounded-full bg-rose-500/[0.04] blur-[120px]" />
         </div>
 
-        {/* Skip button top-right */}
+        {/* Skip button */}
         <div className="absolute top-6 right-6 z-20">
           <button
             type="button"
@@ -111,69 +119,77 @@ export default function IntroExperience({
               e.stopPropagation();
               finish();
             }}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/[0.06] hover:bg-white/15 border border-white/10 text-xs font-mono text-zinc-300 hover:text-white transition active:scale-95"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/[0.04] hover:bg-white/10 border border-white/10 text-xs font-mono text-zinc-400 hover:text-white transition active:scale-95"
           >
             <span>Bỏ qua</span>
-            <ArrowRight className="w-3 h-3 text-zinc-400" />
+            <ArrowRight className="w-3 h-3 text-zinc-500" />
           </button>
         </div>
 
-        {/* Central Intimate Narrative Sequence */}
-        <div className="relative z-10 max-w-sm w-full text-center flex flex-col items-center">
-          {/* Phase 1: Names & Quiet Subline */}
+        {/* Editorial Cinematic Sequence */}
+        <div className="relative z-10 max-w-md w-full flex flex-col items-center text-center">
+          {/* Timestamp Header */}
           <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-            className="flex flex-col items-center gap-2 mb-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.4 }}
+            transition={{ duration: 0.8 }}
+            className="text-[11px] font-mono tracking-[0.25em] text-zinc-400 uppercase mb-8"
           >
-            <div className="w-8 h-8 rounded-full bg-white/[0.04] border border-white/10 flex items-center justify-center text-amber-300/80 mb-1">
-              <Heart className="w-3.5 h-3.5 fill-amber-300/20" />
-            </div>
+            00:00 · KHỞI ĐẦU
+          </motion.div>
 
-            <h1 className="font-serif text-2xl sm:text-3xl font-normal tracking-tight text-zinc-100">
-              {namesTitle}
+          {/* Phase 1: Large Names Typography & Date */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: step >= 1 ? 1 : 0, y: step >= 1 ? 0 : 12 }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="flex flex-col items-center gap-3 mb-6"
+          >
+            <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-normal tracking-tight text-zinc-100 flex items-center gap-3">
+              <span>{p1}</span>
+              <span className="text-amber-400/80 font-light text-2xl sm:text-3xl">×</span>
+              <span>{p2}</span>
             </h1>
 
-            <p className="text-xs text-zinc-400 font-light tracking-wide max-w-xs">
-              {tagline}
+            <p className="text-xs font-mono tracking-[0.2em] text-zinc-400 uppercase">
+              {formattedDate}
             </p>
           </motion.div>
 
-          {/* Phase 2: Meaningful Memory Card Emerges */}
+          {/* Phase 2: Meaningful First Memory */}
           <AnimatePresence>
             {step >= 2 && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.94, y: 10 }}
+                initial={{ opacity: 0, scale: 0.96, y: 12 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                className="w-full max-w-[260px] rounded-2xl overflow-hidden bg-zinc-900/90 border border-white/10 shadow-2xl p-2.5 backdrop-blur-md"
+                transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                className="w-full max-w-[280px] rounded-2xl overflow-hidden bg-[#121215] border border-white/10 shadow-2xl p-2.5"
               >
-                <div className="aspect-[4/3] rounded-xl overflow-hidden bg-zinc-800 relative mb-2.5">
+                <div className="aspect-[4/3] rounded-xl overflow-hidden bg-zinc-900 relative mb-2">
                   <img
                     src="/590610904_1909263110009109_2160755825373491978_n.jpg"
-                    alt="Khoảnh khắc đôi mình"
+                    alt="Khoảnh khắc đầu tiên"
                     className="w-full h-full object-cover"
                     loading="eager"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                  <span className="absolute bottom-2 left-2.5 text-[10px] font-mono text-white/90 tracking-wider">
-                    18.05.2024
+                  <span className="absolute bottom-2 left-2.5 text-[10px] font-mono text-zinc-300 tracking-wider">
+                    {formattedDate}
                   </span>
                 </div>
-                <p className="text-[11px] text-zinc-300 leading-snug px-1 text-center font-light">
-                  Nơi lưu giữ từng khoảnh khắc bình yên
+                <p className="text-[11px] text-zinc-400 font-light px-1 text-center line-clamp-1">
+                  {tagline}
                 </p>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Click hint footer */}
+          {/* Spatial Enter Cue */}
           <motion.p
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.5 }}
-            transition={{ delay: 1.2, duration: 0.6 }}
-            className="text-[10px] text-zinc-500 font-mono tracking-widest uppercase mt-8"
+            animate={{ opacity: 0.4 }}
+            transition={{ delay: 1.4, duration: 0.6 }}
+            className="text-[10px] text-zinc-500 font-mono tracking-[0.2em] uppercase mt-8"
           >
             Chạm bất kỳ đâu để vào không gian
           </motion.p>

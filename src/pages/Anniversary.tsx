@@ -18,7 +18,7 @@ const DEFAULT_ANNIVERSARIES: AnniversaryEvent[] = [
   {
     id: 'ann-1',
     title: 'Ngày Chính Thức Yêu Nhau',
-    date: '2024-05-18',
+    date: '2026-05-18',
     anniversary_type: 'yearly',
     recurrence: 'yearly',
     photo_url: '/590610904_1909263110009109_2160755825373491978_n.jpg',
@@ -41,7 +41,7 @@ const DEFAULT_ANNIVERSARIES: AnniversaryEvent[] = [
   {
     id: 'ann-4',
     title: 'Kỷ Niệm Ngày 18 Hàng Tháng',
-    date: '2024-05-18',
+    date: '2026-05-18',
     anniversary_type: 'monthly',
     recurrence: 'monthly',
   }

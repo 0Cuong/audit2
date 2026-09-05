@@ -15,12 +15,14 @@ import {
   SlidersHorizontal,
   ChevronRight,
   Layers,
-  Edit3,
+  Smile,
+  ArrowUpRight,
+  Check,
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { usePersonalization } from '../contexts/PersonalizationContext';
-import { calculateTimeTogether, getDaysUntilAnniversary, formatDateLocale } from '../lib/dateUtils';
-import { safeGetStorage } from '../lib/storage';
+import { calculateTimeTogether, getDaysUntilAnniversary, formatDateLocale, parseDateInput } from '../lib/dateUtils';
+import { safeGetStorage, safeSetStorage } from '../lib/storage';
 import BlockContainer from '../components/blocks/BlockContainer';
 import { renderWidget } from '../components/widgets/WidgetRegistry';
 
@@ -44,11 +46,36 @@ interface AnniversaryEvent {
   photo_url?: string | null;
 }
 
+interface TimelineEvent {
+  id: string;
+  title: string;
+  date: string;
+  event_type: string;
+  story?: string;
+  location?: string;
+}
+
+interface MoodEntry {
+  id: string;
+  mood: string;
+  note?: string;
+  partner?: string;
+  created_at: string;
+}
+
+const QUICK_MOODS = [
+  { key: 'loved', emoji: '🥰', label: 'Yêu thương' },
+  { key: 'happy', emoji: '😊', label: 'Vui vẻ' },
+  { key: 'calm', emoji: '😌', label: 'Bình yên' },
+  { key: 'excited', emoji: '🤩', label: 'Hào hứng' },
+];
+
 export default function Dashboard() {
-  const { t, profile, lang } = useApp();
+  const { profile, lang } = useApp();
   const { blocks, isEditMode, setIsEditMode, setIsStudioOpen } = usePersonalization();
 
   const [showWidgetsSection, setShowWidgetsSection] = useState(false);
+  const [selectedMoodKey, setSelectedMoodKey] = useState<string | null>(null);
 
   // Real couple names & dates
   const p1Name = profile?.partner1_name || 'Cường';
@@ -56,6 +83,13 @@ export default function Dashboard() {
   const p1Avatar = profile?.partner1_avatar || '/590610904_1909263110009109_2160755825373491978_n.jpg';
   const p2Avatar = profile?.partner2_avatar || '/605572670_122215932062047100_7842864668271503382_n.jpg';
   const startDate = profile?.relationship_start;
+
+  const formattedStartDate = useMemo(() => {
+    if (!startDate) return '18 Tháng 5, 2026';
+    const d = parseDateInput(startDate);
+    if (!d) return '18 Tháng 5, 2026';
+    return `${d.getDate()} Tháng ${d.getMonth() + 1}, ${d.getFullYear()}`;
+  }, [startDate]);
 
   // Real-time counter
   const [timeTogether, setTimeTogether] = useState(() => calculateTimeTogether(startDate));
@@ -77,7 +111,7 @@ export default function Dashboard() {
         description: 'Khoảnh khắc chụp lại lúc em cười tươi rạng rỡ nhất tại quán cà phê góc phố.',
         media_type: 'photo',
         url: '/605572670_122215932062047100_7842864668271503382_n.jpg',
-        date: '2024-05-18',
+        date: '2026-05-18',
         is_favorite: true,
         location: { name: 'The Little Cafe, Sài Gòn' },
       },
@@ -87,15 +121,15 @@ export default function Dashboard() {
         description: 'Tấm hình chụp chung đầu tiên đầy kỷ niệm của hai đứa sau chuyến đi dạo.',
         media_type: 'photo',
         url: '/590610904_1909263110009109_2160755825373491978_n.jpg',
-        date: '2024-05-18',
+        date: '2026-05-18',
         is_favorite: true,
         location: { name: 'Bờ hồ Tây' },
-      }
+      },
     ]);
   }, []);
 
-  // Featured memory: prioritized favorite or first photo
-  const featuredMemory = useMemo(() => {
+  // Spotlight Memory: prioritized favorite or first photo
+  const spotlightMemory = useMemo(() => {
     return memories.find((m) => m.is_favorite && m.url) || memories[0] || null;
   }, [memories]);
 
@@ -105,14 +139,14 @@ export default function Dashboard() {
       {
         id: 'ann-1',
         title: 'Kỷ Niệm Ngày Yêu Nhau',
-        date: '2024-05-18',
+        date: '2026-05-18',
         anniversary_type: 'yearly',
         recurrence: 'yearly',
       },
       {
         id: 'ann-4',
         title: 'Kỷ Niệm Ngày 18 Hàng Tháng',
-        date: '2024-05-18',
+        date: '2026-05-18',
         anniversary_type: 'monthly',
         recurrence: 'monthly',
       },
@@ -129,7 +163,7 @@ export default function Dashboard() {
         date: '2004-09-12',
         anniversary_type: 'birthday',
         recurrence: 'birthday',
-      }
+      },
     ]);
   }, []);
 
@@ -156,54 +190,89 @@ export default function Dashboard() {
     return nearest;
   }, [anniversaries]);
 
-  // Check for unfinished draft in journal
-  const hasJournalDraft = useMemo(() => {
-    const draft = safeGetStorage<any>('cuongisme_journal_draft_v2', null);
-    return Boolean(draft?.content?.trim() || draft?.title?.trim());
-  }, []);
-
-  // Check letters
-  const letters = useMemo(() => {
-    return safeGetStorage<any[]>('cuongisme_letters', []);
-  }, []);
-
-  // Check bucket list items
-  const bucketList = useMemo(() => {
-    return safeGetStorage<any[]>('cuongisme_bucket', [
-      { id: 'b-1', title: 'Cùng nhau ngắm hoàng hôn trên bãi biển', completed: true },
-      { id: 'b-2', title: 'Đi du lịch Đà Lạt mùa dã quỳ', completed: false },
-      { id: 'b-3', title: 'Nấu một bữa tối thật thịnh soạn cùng nhau', completed: false },
+  // Load real timeline events for visual chronology
+  const timelineEvents = useMemo(() => {
+    return safeGetStorage<TimelineEvent[]>('cuongisme_timeline', [
+      {
+        id: 'tl-1',
+        title: 'Lần Đầu Gặp Gỡ',
+        date: '2026-05-18',
+        event_type: 'first_meet',
+        story: 'Khoảnh khắc đầu tiên hai đứa chạm mắt nhau, thời gian dường như ngưng đọng.',
+        location: 'Quán Cafe hẹn ước',
+      },
+      {
+        id: 'tl-2',
+        title: 'Tin Nhắn Làm Quen Đầu Tiên',
+        date: '2026-05-20',
+        event_type: 'first_message',
+        story: 'Những dòng tin nhắn vụng về nhưng ngập tràn háo hức thâu đêm.',
+        location: 'Hà Nội & Sài Gòn',
+      },
+      {
+        id: 'tl-3',
+        title: 'Chuyến Đi Chơi Đầu Tiên',
+        date: '2026-06-15',
+        event_type: 'first_trip',
+        story: 'Cùng nhau vi vu trên những cung đường lộng gió, ngắm hoàng hôn buông xuống.',
+        location: 'Đà Lạt mộng mơ',
+      },
     ]);
   }, []);
 
-  const nextWish = useMemo(() => {
-    return bucketList.find((item) => !item.completed) || bucketList[0] || null;
-  }, [bucketList]);
+  // Load mood entries
+  const [moodEntries, setMoodEntries] = useState<MoodEntry[]>(() => {
+    return safeGetStorage<MoodEntry[]>('cuongisme_moods', [
+      {
+        id: 'm-1',
+        mood: 'loved',
+        note: 'Được người ấy ôm từ phía sau, ấm áp vô cùng!',
+        partner: 'partner1',
+        created_at: new Date().toISOString(),
+      },
+    ]);
+  });
+
+  const latestMood = moodEntries[0] || null;
+
+  const handleQuickLogMood = (moodKey: string) => {
+    setSelectedMoodKey(moodKey);
+    const newEntry: MoodEntry = {
+      id: 'local-' + Date.now(),
+      mood: moodKey,
+      note: 'Ghi nhanh từ trang chủ',
+      partner: 'partner1',
+      created_at: new Date().toISOString(),
+    };
+    const updated = [newEntry, ...moodEntries];
+    setMoodEntries(updated);
+    safeSetStorage('cuongisme_moods', updated);
+  };
 
   return (
     <main className="pt-20 sm:pt-24 pb-28 min-h-screen text-zinc-100 relative">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 space-y-12">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 space-y-16">
         
         {/* ============================================================ */}
-        {/* 1. IDENTITY HEADER: WHO ARE WE?                              */}
+        {/* 1. OUR WORLD HERO: NAMES × STATEMENT × LIVING COUNTER       */}
         {/* ============================================================ */}
         <section 
-          aria-label="Thông tin đôi mình"
-          className="pt-4 pb-2 border-b border-white/[0.07]"
+          aria-label="Khởi đầu thế giới của hai đứa"
+          className="pt-6 sm:pt-10 pb-6 border-b border-white/[0.08]"
         >
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div className="space-y-3">
-              {/* Couple Portraits & Private Badge */}
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
+            <div className="space-y-4 max-w-2xl">
+              {/* Couple portraits & privacy indicator */}
               <div className="flex items-center gap-3">
                 <div className="flex -space-x-3 items-center">
-                  <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-[#121214] ring-1 ring-white/10 bg-zinc-800">
+                  <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-[#09090c] ring-1 ring-white/15 bg-zinc-800">
                     <img
                       src={p1Avatar}
                       alt={p1Name}
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-[#121214] ring-1 ring-white/10 bg-zinc-800">
+                  <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-[#09090c] ring-1 ring-white/15 bg-zinc-800">
                     <img
                       src={p2Avatar}
                       alt={p2Name}
@@ -212,29 +281,34 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] border border-white/10 text-[11px] font-mono text-zinc-400">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/10 text-[11px] font-mono text-zinc-400">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   <span>Không gian riêng tư</span>
                 </div>
               </div>
 
-              {/* Names & Editorial Subline */}
-              <div>
-                <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-normal tracking-tight text-zinc-100">
-                  {p1Name} &amp; {p2Name}
+              {/* Large Names: CƯỜNG × NGHI */}
+              <div className="space-y-2">
+                <h1 className="font-serif text-3xl sm:text-5xl md:text-6xl font-normal tracking-tight text-zinc-100 flex items-center gap-3 sm:gap-4 flex-wrap">
+                  <span>{p1Name.toUpperCase()}</span>
+                  <span className="text-amber-400/80 font-light text-2xl sm:text-4xl">×</span>
+                  <span>{p2Name.toUpperCase()}</span>
                 </h1>
-                <p className="text-xs sm:text-sm text-zinc-400 font-light mt-1">
-                  Đồng hành cùng nhau từ ngày 18 Tháng 5, 2024 · Sài Gòn
+                <p className="text-xs sm:text-sm text-zinc-400 font-light leading-relaxed">
+                  Không gian số lưu giữ hành trình và những lát cắt bình dị của hai đứa.
+                </p>
+                <p className="text-xs font-mono text-zinc-500 uppercase tracking-wider">
+                  Đồng hành cùng nhau từ ngày {formattedStartDate}
                 </p>
               </div>
             </div>
 
-            {/* Quiet Action Buttons */}
-            <div className="flex items-center gap-2.5 shrink-0">
+            {/* Quick Actions */}
+            <div className="flex items-center gap-2.5 shrink-0 self-start md:self-end">
               <button
                 type="button"
                 onClick={() => setIsStudioOpen(true)}
-                className="px-3.5 py-1.5 rounded-full bg-white/[0.04] hover:bg-white/10 border border-white/10 text-xs font-mono text-zinc-300 hover:text-white transition flex items-center gap-1.5 active:scale-95"
+                className="px-3.5 py-2 rounded-full bg-white/[0.04] hover:bg-white/10 border border-white/10 text-xs font-mono text-zinc-300 hover:text-white transition flex items-center gap-1.5 active:scale-95"
               >
                 <SlidersHorizontal className="w-3.5 h-3.5 text-amber-400/80" />
                 <span>Studio</span>
@@ -242,196 +316,108 @@ export default function Dashboard() {
 
               <Link
                 to="/memories"
-                className="px-4 py-1.5 rounded-full bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-semibold shadow-sm transition active:scale-95 flex items-center gap-1.5"
+                className="px-4 py-2 rounded-full bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-semibold shadow-sm transition active:scale-95 flex items-center gap-1.5"
               >
                 <Sparkles className="w-3.5 h-3.5 text-zinc-900" />
-                <span>Xem kỷ niệm</span>
+                <span>Kho kỷ niệm</span>
               </Link>
+            </div>
+          </div>
+
+          {/* Living Relationship Counter Bar */}
+          <div className="mt-8 pt-6 border-t border-white/[0.05] grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Năm bên nhau</span>
+              <p className="font-serif text-2xl sm:text-3xl text-zinc-100 font-normal mt-1">
+                {startDate ? `${timeTogether.years} năm` : '—'}
+              </p>
+            </div>
+            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Tháng bên nhau</span>
+              <p className="font-serif text-2xl sm:text-3xl text-zinc-100 font-normal mt-1">
+                {startDate ? `${timeTogether.months} tháng` : '—'}
+              </p>
+            </div>
+            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Tổng số ngày</span>
+              <p className="font-serif text-2xl sm:text-3xl text-amber-300 font-normal mt-1">
+                {startDate ? `${timeTogether.totalDays} ngày` : '—'}
+              </p>
+            </div>
+            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex flex-col justify-between">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Thời gian sống động</span>
+              <p className="font-mono text-sm sm:text-base text-zinc-300 mt-1">
+                {startDate ? `${timeTogether.hours}h ${timeTogether.minutes}m ${timeTogether.seconds}s` : 'Chưa thiết lập'}
+              </p>
             </div>
           </div>
         </section>
 
         {/* ============================================================ */}
-        {/* 2. TODAY: WHAT MATTERS TODAY?                                */}
+        {/* 2. MEMORY SPOTLIGHT: RESTRAINED METADATA & STRONG PHOTOGRAPHY */}
         {/* ============================================================ */}
-        <section aria-label="Hôm nay của tụi mình" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-400 flex items-center gap-2">
-              <Calendar className="w-3.5 h-3.5 text-amber-400/80" />
-              <span>Hôm nay</span>
-            </h2>
-            <span className="text-xs text-zinc-500 font-mono">
-              {new Date().toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Days Together Counter Card */}
-            <div className="p-5 rounded-2xl bg-zinc-900/60 border border-white/[0.08] flex flex-col justify-between">
-              <span className="text-xs text-zinc-400 font-light">
-                Thời gian bên nhau
-              </span>
-              {startDate ? (
-                <>
-                  <div className="my-3">
-                    <div className="font-serif text-3xl sm:text-4xl text-zinc-100 font-normal tracking-tight">
-                      {timeTogether.totalDays}{' '}
-                      <span className="text-xs sm:text-sm font-sans text-zinc-400">ngày</span>
-                    </div>
-                    <div className="text-[11px] font-mono text-zinc-500 mt-1 flex items-center gap-2">
-                      <span>{timeTogether.years} năm</span>
-                      <span>·</span>
-                      <span>{timeTogether.months} tháng</span>
-                      <span>·</span>
-                      <span>{timeTogether.days} ngày</span>
-                    </div>
-                  </div>
-                  <div className="text-[11px] text-zinc-500 font-mono">
-                    {timeTogether.hours}h {timeTogether.minutes}m {timeTogether.seconds}s
-                  </div>
-                </>
-              ) : (
-                <div className="my-3">
-                  <p className="text-xs text-zinc-400 mb-2 font-light">Chưa thiết lập ngày bắt đầu yêu</p>
-                  <Link
-                    to="/settings"
-                    className="inline-flex items-center gap-1.5 text-xs text-rose-400 hover:text-rose-300 font-mono transition"
-                  >
-                    <span>Thiết lập ngay</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-              )}
-            </div>
-
-            {/* Nearest Milestone / Anniversary */}
-            <div className="p-5 rounded-2xl bg-zinc-900/60 border border-white/[0.08] flex flex-col justify-between">
-              <span className="text-xs text-zinc-400 font-light">
-                Cột mốc sắp tới
-              </span>
-              {nearestMilestone ? (
-                <div className="my-3 space-y-1">
-                  <h3 className="text-base font-serif text-zinc-100 font-normal line-clamp-1">
-                    {nearestMilestone.event.title}
-                  </h3>
-                  <p className="text-2xl font-serif text-amber-300 font-normal">
-                    {nearestMilestone.isToday ? (
-                      'Hôm nay là ngày kỷ niệm!'
-                    ) : (
-                      <>
-                        còn {nearestMilestone.daysLeft}{' '}
-                        <span className="text-xs font-sans text-zinc-400">ngày nữa</span>
-                      </>
-                    )}
-                  </p>
-                </div>
-              ) : (
-                <p className="text-xs text-zinc-500 my-3">Chưa có ngày kỷ niệm</p>
-              )}
-              <Link
-                to="/anniversary"
-                className="text-[11px] text-zinc-400 hover:text-white transition flex items-center gap-1 font-mono"
-              >
-                <span>Xem tất cả mốc kỷ niệm</span>
-                <ChevronRight className="w-3 h-3" />
-              </Link>
-            </div>
-
-            {/* Recent Message or Thought */}
-            <div className="p-5 rounded-2xl bg-zinc-900/60 border border-white/[0.08] flex flex-col justify-between">
-              <span className="text-xs text-zinc-400 font-light">
-                Lời nhắn gửi gần nhất
-              </span>
-              <div className="my-3">
-                {letters.length > 0 ? (
-                  <p className="text-xs text-zinc-300 italic line-clamp-3 leading-relaxed font-light">
-                    "{letters[0].content || letters[0].title}"
-                  </p>
-                ) : (
-                  <p className="text-xs text-zinc-400 italic line-clamp-3 leading-relaxed font-light">
-                    "Gửi người anh yêu thương nhất: Cảm ơn em vì đã luôn ở bên anh qua từng ngày bình dị."
-                  </p>
-                )}
-              </div>
-              <Link
-                to="/letters"
-                className="text-[11px] text-zinc-400 hover:text-white transition flex items-center gap-1 font-mono"
-              >
-                <span>Mở hộp thư tình</span>
-                <ChevronRight className="w-3 h-3" />
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        {/* ============================================================ */}
-        {/* 3. FEATURED MEMORY: ONE STRONG MEMORY WITH VISUAL WEIGHT     */}
-        {/* ============================================================ */}
-        {featuredMemory && (
-          <section aria-label="Kỷ niệm nổi bật" className="space-y-4">
+        {spotlightMemory && (
+          <section aria-label="Kỷ niệm tiêu điểm" className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-400 flex items-center gap-2">
-                <Heart className="w-3.5 h-3.5 text-rose-400/80" />
-                <span>Khoảnh khắc đáng nhớ</span>
-              </h2>
+              <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-400 flex items-center gap-2">
+                <Heart className="w-3.5 h-3.5 text-rose-400" />
+                <span>Khoảnh khắc tiêu điểm</span>
+              </span>
               <Link
                 to="/memories"
-                className="text-xs text-zinc-400 hover:text-white transition font-mono flex items-center gap-1"
+                className="text-xs font-mono text-zinc-400 hover:text-white transition flex items-center gap-1"
               >
                 <span>Toàn bộ kỷ niệm</span>
-                <ChevronRight className="w-3 h-3" />
+                <ArrowUpRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
-            <div className="rounded-3xl overflow-hidden bg-zinc-900/70 border border-white/[0.08] grid grid-cols-1 md:grid-cols-12 shadow-xl">
-              {/* Image Frame */}
-              <div className="md:col-span-7 aspect-[4/3] md:aspect-auto md:min-h-[360px] relative bg-zinc-800 overflow-hidden">
+            <div className="rounded-3xl overflow-hidden bg-[#111115] border border-white/[0.08] grid grid-cols-1 md:grid-cols-12 shadow-2xl group">
+              {/* Image Frame with Subtle Zoom on Hover */}
+              <div className="md:col-span-7 aspect-[4/3] md:aspect-auto md:min-h-[420px] relative bg-zinc-900 overflow-hidden">
                 <img
-                  src={featuredMemory.url}
-                  alt={featuredMemory.title}
-                  className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+                  src={spotlightMemory.url}
+                  alt={spotlightMemory.title}
+                  className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
+                  loading="eager"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent md:hidden" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#111115] via-transparent to-transparent md:hidden" />
               </div>
 
-              {/* Editorial Caption Side */}
-              <div className="md:col-span-5 p-6 sm:p-8 flex flex-col justify-between space-y-6">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-mono text-zinc-400">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>{formatDateLocale(featuredMemory.date, lang)}</span>
-                    {featuredMemory.location?.name && (
+              {/* Editorial Typography & Metadata */}
+              <div className="md:col-span-5 p-6 sm:p-10 flex flex-col justify-between space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 text-xs font-mono text-zinc-400">
+                    <span className="text-amber-400/90 font-medium">
+                      {formatDateLocale(spotlightMemory.date, lang)}
+                    </span>
+                    {spotlightMemory.location?.name && (
                       <>
                         <span>·</span>
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3 text-amber-400/80" />
-                          <span className="line-clamp-1">{featuredMemory.location.name}</span>
+                        <span className="flex items-center gap-1 line-clamp-1">
+                          <MapPin className="w-3 h-3 text-zinc-500" />
+                          <span>{spotlightMemory.location.name}</span>
                         </span>
                       </>
                     )}
                   </div>
 
-                  <h3 className="font-serif text-2xl sm:text-3xl font-normal text-zinc-100 leading-snug">
-                    {featuredMemory.title}
-                  </h3>
+                  <h2 className="font-serif text-2xl sm:text-3xl font-normal text-zinc-100 leading-snug">
+                    {spotlightMemory.title}
+                  </h2>
 
                   <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed font-light">
-                    {featuredMemory.description}
+                    {spotlightMemory.description}
                   </p>
                 </div>
 
                 <div className="pt-4 border-t border-white/[0.06] flex items-center justify-between">
-                  <span className="text-[11px] font-mono text-zinc-500">
-                    Kỷ niệm được ghim
+                  <span className="text-[11px] font-mono text-zinc-500 uppercase tracking-widest">
+                    Khoảnh khắc đặc biệt
                   </span>
                   <Link
                     to="/memories"
-                    className="px-4 py-1.5 rounded-full bg-white/[0.06] hover:bg-white/10 border border-white/10 text-xs font-mono text-zinc-200 transition"
+                    className="px-4 py-1.5 rounded-full bg-white/[0.06] hover:bg-white/10 border border-white/10 text-xs font-mono text-zinc-200 hover:text-white transition"
                   >
                     Xem chi tiết
                   </Link>
@@ -442,130 +428,196 @@ export default function Dashboard() {
         )}
 
         {/* ============================================================ */}
-        {/* 4. CONTINUE: WHAT CAN WE CONTINUE?                           */}
+        {/* 3. TIMELINE PREVIEW: VISUAL CHRONOLOGY NOT A LIST OF CARDS   */}
         {/* ============================================================ */}
-        <section aria-label="Tiếp tục" className="space-y-4">
-          <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-400 flex items-center gap-2">
-            <Edit3 className="w-3.5 h-3.5 text-amber-400/80" />
-            <span>Tiếp tục</span>
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Action 1: Journal */}
+        <section aria-label="Dòng thời gian trực quan" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-400 flex items-center gap-2">
+              <Clock className="w-3.5 h-3.5 text-amber-400" />
+              <span>Dòng thời gian · Những cột mốc đầu tiên</span>
+            </span>
             <Link
-              to="/journal"
-              className="p-5 rounded-2xl bg-zinc-900/60 hover:bg-zinc-900/90 border border-white/[0.08] hover:border-white/20 transition-all group flex flex-col justify-between space-y-4"
+              to="/timeline"
+              className="text-xs font-mono text-zinc-400 hover:text-white transition flex items-center gap-1"
             >
-              <div className="flex items-center justify-between">
-                <div className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-amber-400 group-hover:scale-105 transition-transform">
-                  <BookOpen className="w-4 h-4" />
-                </div>
-                <span className="text-[11px] font-mono text-zinc-500">Nhật ký</span>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-zinc-100 group-hover:text-white">
-                  {hasJournalDraft ? 'Tiếp tục bản nháp nhật ký' : 'Viết dòng nhật ký hôm nay'}
-                </h3>
-                <p className="text-xs text-zinc-400 font-light mt-1 line-clamp-2">
-                  {hasJournalDraft
-                    ? 'Bạn đang có một bản nháp chưa lưu hoàn tất.'
-                    : 'Ghi lại những cảm xúc nhỏ bé và ấm áp trong ngày.'}
-                </p>
-              </div>
-              <span className="text-xs text-amber-400/90 font-mono flex items-center gap-1">
-                <span>Viết ngay</span>
-                <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-              </span>
+              <span>Xem toàn bộ dòng thời gian</span>
+              <ChevronRight className="w-3.5 h-3.5" />
             </Link>
+          </div>
 
-            {/* Action 2: Wishlist Goal */}
-            <Link
-              to="/bucket-list"
-              className="p-5 rounded-2xl bg-zinc-900/60 hover:bg-zinc-900/90 border border-white/[0.08] hover:border-white/20 transition-all group flex flex-col justify-between space-y-4"
-            >
-              <div className="flex items-center justify-between">
-                <div className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-rose-400 group-hover:scale-105 transition-transform">
-                  <ListTodo className="w-4 h-4" />
-                </div>
-                <span className="text-[11px] font-mono text-zinc-500">Wishlist</span>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-zinc-100 group-hover:text-white">
-                  {nextWish ? nextWish.title : 'Dự định muốn cùng nhau làm'}
-                </h3>
-                <p className="text-xs text-zinc-400 font-light mt-1 line-clamp-2">
-                  Cùng nhau hoàn thành từng điều ước nhỏ trong danh sách chung.
-                </p>
-              </div>
-              <span className="text-xs text-rose-400/90 font-mono flex items-center gap-1">
-                <span>Xem danh sách ước nguyện</span>
-                <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-              </span>
-            </Link>
+          <div className="relative pl-6 sm:pl-8 border-l border-white/10 space-y-8">
+            {timelineEvents.slice(0, 3).map((event, idx) => (
+              <div key={event.id} className="relative group">
+                {/* Visual node on the timeline line */}
+                <div className="absolute -left-[31px] sm:-left-[39px] top-1 w-3.5 h-3.5 rounded-full bg-[#09090c] border-2 border-amber-400/80 group-hover:border-amber-300 group-hover:scale-125 transition-transform" />
+                
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 text-xs font-mono text-zinc-400">
+                    <span className="text-amber-300/90 font-medium">
+                      {formatDateLocale(event.date, lang)}
+                    </span>
+                    {event.location && (
+                      <>
+                        <span>·</span>
+                        <span className="text-zinc-500">{event.location}</span>
+                      </>
+                    )}
+                  </div>
 
-            {/* Action 3: Music Playlist */}
-            <Link
-              to="/music"
-              className="p-5 rounded-2xl bg-zinc-900/60 hover:bg-zinc-900/90 border border-white/[0.08] hover:border-white/20 transition-all group flex flex-col justify-between space-y-4"
-            >
-              <div className="flex items-center justify-between">
-                <div className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition-transform">
-                  <Music className="w-4 h-4" />
+                  <h3 className="font-serif text-lg sm:text-xl font-normal text-zinc-100 group-hover:text-amber-200 transition-colors">
+                    {event.title}
+                  </h3>
+
+                  {event.story && (
+                    <p className="text-xs sm:text-sm text-zinc-400 font-light leading-relaxed max-w-2xl">
+                      {event.story}
+                    </p>
+                  )}
                 </div>
-                <span className="text-[11px] font-mono text-zinc-500">Giai điệu</span>
               </div>
-              <div>
-                <h3 className="text-sm font-medium text-zinc-100 group-hover:text-white">
-                  Những bài hát của hai đứa
-                </h3>
-                <p className="text-xs text-zinc-400 font-light mt-1 line-clamp-2">
-                  Bật playlist nhẹ nhàng cùng nghe trong lúc ngắm nhìn không gian.
-                </p>
-              </div>
-              <span className="text-xs text-emerald-400/90 font-mono flex items-center gap-1">
-                <span>Nghe ngay</span>
-                <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-              </span>
-            </Link>
+            ))}
           </div>
         </section>
 
         {/* ============================================================ */}
-        {/* 5. EXPLORE: WHERE CAN WE EXPLORE?                            */}
+        {/* 4. TODAY & UPCOMING MOMENT (INTERACTIVE & HONEST DATA)       */}
+        {/* ============================================================ */}
+        <section aria-label="Hôm nay và khoảnh khắc sắp tới" className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Daily State: Lightweight Emotional Interaction */}
+          <div className="p-6 rounded-2xl bg-[#111115] border border-white/[0.08] flex flex-col justify-between space-y-5">
+            <div className="space-y-1">
+              <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-400 flex items-center gap-2">
+                <Smile className="w-3.5 h-3.5 text-amber-400" />
+                <span>Hôm nay · Chúng mình thế nào?</span>
+              </span>
+              <p className="text-xs text-zinc-400 font-light">
+                Ghi nhanh cảm xúc hôm nay để lưu lại trong hành trình chung
+              </p>
+            </div>
+
+            {/* Quick Mood Selection */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {QUICK_MOODS.map((item) => {
+                const isSelected = selectedMoodKey === item.key || (latestMood && latestMood.mood === item.key && !selectedMoodKey);
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => handleQuickLogMood(item.key)}
+                    className={`p-3 rounded-xl border text-center transition flex flex-col items-center gap-1.5 ${
+                      isSelected
+                        ? 'bg-amber-400/10 border-amber-400/40 text-white shadow-sm'
+                        : 'bg-white/[0.02] border-white/[0.06] text-zinc-300 hover:bg-white/[0.06] hover:text-white'
+                    }`}
+                  >
+                    <span className="text-xl">{item.emoji}</span>
+                    <span className="text-[11px] font-medium">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-white/[0.06]">
+              <span className="text-[11px] font-mono text-zinc-500">
+                {latestMood ? `Gần nhất: ${latestMood.note || latestMood.mood}` : 'Chưa ghi nhật ký cảm xúc'}
+              </span>
+              <Link
+                to="/mood"
+                className="text-xs font-mono text-zinc-400 hover:text-white transition flex items-center gap-1"
+              >
+                <span>Xem chi tiết</span>
+                <ChevronRight className="w-3 h-3" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Upcoming Moment: Real Persisted Dates */}
+          <div className="p-6 rounded-2xl bg-[#111115] border border-white/[0.08] flex flex-col justify-between space-y-5">
+            <div className="space-y-1">
+              <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-400 flex items-center gap-2">
+                <Calendar className="w-3.5 h-3.5 text-rose-400" />
+                <span>Cột mốc sắp tới</span>
+              </span>
+              <p className="text-xs text-zinc-400 font-light">
+                Thời gian mong đợi cho ngày đặc biệt tiếp theo
+              </p>
+            </div>
+
+            {nearestMilestone ? (
+              <div className="space-y-2 py-2">
+                <h3 className="font-serif text-2xl text-zinc-100 font-normal">
+                  {nearestMilestone.event.title}
+                </h3>
+                <p className="text-3xl sm:text-4xl font-serif text-amber-300 font-normal">
+                  {nearestMilestone.isToday ? (
+                    'Hôm nay là ngày kỷ niệm!'
+                  ) : (
+                    <>
+                      còn {nearestMilestone.daysLeft}{' '}
+                      <span className="text-sm font-sans text-zinc-400">ngày nữa</span>
+                    </>
+                  )}
+                </p>
+              </div>
+            ) : (
+              <div className="py-4 text-xs text-zinc-500 font-light">
+                Chưa có cột mốc nào được lưu. Bạn có thể thêm ngày kỷ niệm trong mục Ngày kỷ niệm.
+              </div>
+            )}
+
+            <div className="flex items-center justify-between pt-2 border-t border-white/[0.06]">
+              <span className="text-[11px] font-mono text-zinc-500">
+                Lịch trình đôi mình
+              </span>
+              <Link
+                to="/anniversary"
+                className="text-xs font-mono text-zinc-400 hover:text-white transition flex items-center gap-1"
+              >
+                <span>Mở lịch kỷ niệm</span>
+                <ChevronRight className="w-3 h-3" />
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* ============================================================ */}
+        {/* 5. QUIET CURATED EXPLORATION DESTINATIONS                    */}
         {/* ============================================================ */}
         <section aria-label="Khám phá các góc nhỏ" className="space-y-4">
-          <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-400 flex items-center gap-2">
-            <Compass className="w-3.5 h-3.5 text-zinc-400" />
-            <span>Khám phá không gian</span>
-          </h2>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-mono uppercase tracking-[0.2em] text-zinc-400 flex items-center gap-2">
+              <Compass className="w-3.5 h-3.5 text-zinc-400" />
+              <span>Góc nhỏ trong không gian</span>
+            </span>
+          </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {[
-              { to: '/timeline', label: 'Dòng thời gian', desc: 'Các mốc từ ngày đầu', icon: Clock },
-              { to: '/memories', label: 'Kho kỷ niệm', desc: 'Hình ảnh & ghi âm', icon: Sparkles },
-              { to: '/letters', label: 'Thư tình', desc: 'Những lá thư tay', icon: Mail },
-              { to: '/journal', label: 'Nhật ký chung', desc: 'Trang viết mỗi ngày', icon: BookOpen },
-              { to: '/map', label: 'Bản đồ kỷ niệm', desc: 'Những góc quán quen', icon: MapPin },
-              { to: '/music', label: 'Giai điệu', desc: 'Bài hát của tụi mình', icon: Music },
-              { to: '/anniversary', label: 'Ngày kỷ niệm', desc: 'Đếm ngược cột mốc', icon: Calendar },
-              { to: '/bucket-list', label: 'Điều ước', desc: 'Mục tiêu cùng làm', icon: ListTodo },
+              { to: '/letters', label: 'Thư tình', desc: 'Thư tay gửi nhau', icon: Mail },
+              { to: '/journal', label: 'Nhật ký', desc: 'Trang viết mỗi ngày', icon: BookOpen },
+              { to: '/map', label: 'Bản đồ', desc: 'Góc quán kỷ niệm', icon: MapPin },
+              { to: '/music', label: 'Giai điệu', desc: 'Những bài hát đôi', icon: Music },
+              { to: '/bucket-list', label: 'Wishlist', desc: 'Điều ước cùng làm', icon: ListTodo },
+              { to: '/hub', label: 'Lời nhắn', desc: 'Ghi chú nhanh', icon: Heart },
             ].map((item) => {
               const Icon = item.icon;
               return (
                 <Link
                   key={item.to}
                   to={item.to}
-                  className="p-4 rounded-2xl bg-zinc-900/40 hover:bg-zinc-900/80 border border-white/[0.06] hover:border-white/15 transition-all group"
+                  className="p-4 rounded-2xl bg-[#111115]/60 hover:bg-[#111115] border border-white/[0.06] hover:border-white/20 transition-all group flex flex-col justify-between"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-white/[0.03] border border-white/10 flex items-center justify-center text-zinc-400 group-hover:text-zinc-100 group-hover:border-white/20 transition-all mb-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center text-zinc-400 group-hover:text-amber-300 transition-colors mb-3">
                     <Icon className="w-4 h-4" />
                   </div>
-                  <h3 className="text-xs sm:text-sm font-medium text-zinc-200 group-hover:text-white">
-                    {item.label}
-                  </h3>
-                  <p className="text-[11px] text-zinc-500 font-light mt-0.5 line-clamp-1">
-                    {item.desc}
-                  </p>
+                  <div>
+                    <h3 className="text-xs font-medium text-zinc-200 group-hover:text-white">
+                      {item.label}
+                    </h3>
+                    <p className="text-[10px] text-zinc-500 font-light mt-0.5 line-clamp-1">
+                      {item.desc}
+                    </p>
+                  </div>
                 </Link>
               );
             })}
@@ -573,10 +625,10 @@ export default function Dashboard() {
         </section>
 
         {/* ============================================================ */}
-        {/* 6. COMPOSABLE WIDGETS SECTION (COLLAPSIBLE / OPTIONAL)       */}
+        {/* 6. COMPOSABLE PERSONAL WIDGETS (OPTIONAL / COLLAPSIBLE)      */}
         {/* ============================================================ */}
         {blocks.length > 0 && (
-          <section aria-label="Widget tùy biến" className="pt-6 border-t border-white/[0.06] space-y-4">
+          <section aria-label="Widget tùy biến" className="pt-8 border-t border-white/[0.06] space-y-4">
             <div className="flex items-center justify-between">
               <button
                 type="button"
@@ -586,7 +638,7 @@ export default function Dashboard() {
                 <Layers className="w-3.5 h-3.5" />
                 <span>Widget tùy biến ({blocks.length})</span>
                 <span className="text-[10px] text-zinc-500 font-sans">
-                  {showWidgetsSection ? '— Ẩn bớt' : '— Nhấn để xem'}
+                  {showWidgetsSection ? '— Ẩn bớt' : '— Nhấn để mở'}
                 </span>
               </button>
 

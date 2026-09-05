@@ -148,7 +148,7 @@ export const DEFAULT_PROFILE: CoupleProfile = {
   partner2_gender: 'female',
   partner2_birthday: '2005-01-03',
   relationship_status: 'dating',
-  relationship_start: '',
+  relationship_start: '2026-05-18T00:00:00.000Z',
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -361,11 +361,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
               const migrated = { ...cachedProfile, relationship_start: legacyIdentity.relationshipStart };
               setProfileState(migrated);
               safeSetStorage('cuongisme_profile', migrated);
-            } else if (cachedProfile.relationship_start === '2024-05-18T00:00:00.000Z') {
-              // Sanitize old hardcoded default from local cache
-              const sanitized = { ...cachedProfile, relationship_start: '' };
-              setProfileState(sanitized);
-              safeSetStorage('cuongisme_profile', sanitized);
+            } else if (!cachedProfile.relationship_start || cachedProfile.relationship_start === '2024-05-18T00:00:00.000Z') {
+              const updated = { ...cachedProfile, relationship_start: '2026-05-18T00:00:00.000Z' };
+              setProfileState(updated);
+              safeSetStorage('cuongisme_profile', updated);
             }
           }
         } catch {
