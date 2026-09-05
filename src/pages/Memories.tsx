@@ -121,91 +121,13 @@ const STORAGE_KEY = 'cuongisme_memories_v2';
 const COLLECTIONS_STORAGE_KEY = 'cuongisme_memory_collections_v2';
 
 const DEFAULT_AUTHORS: MemoryAuthor[] = [
-  { id: 'minh', name: 'Minh', avatar: '' },
-  { id: 'em', name: 'Em', avatar: '' }
+  { id: 'partner1', name: 'Partner 1', avatar: '' },
+  { id: 'partner2', name: 'Partner 2', avatar: '' }
 ];
 
-const DEFAULT_COLLECTIONS: MemoryCollection[] = [
-  { id: 'col-dalat', name: 'Đà Lạt 2026', description: 'Chuyến đi săn mây và hoa mai anh đào' },
-  { id: 'col-birthday', name: 'Sinh nhật em', description: 'Những khoảnh khắc tuổi mới' },
-  { id: 'col-firstdays', name: 'Những ngày đầu tiên', description: 'Thuở mới quen đầy ngại ngùng' },
-  { id: 'col-letters', name: 'Letters Archive', description: 'Thư tay và những dòng nhắn gửi' }
-];
+const DEFAULT_COLLECTIONS: MemoryCollection[] = [];
 
-const DEFAULT_MEMORIES: MemoryItem[] = [
-  {
-    id: 'mem-1',
-    author_id: 'cuong',
-    author_name: 'Cường',
-    title: 'Nụ cười tỏa nắng của em',
-    description: 'Khoảnh khắc chụp lại lúc em cười tươi rạng rỡ nhất tại quán cà phê góc phố.',
-    media_type: 'photo',
-    category: 'photo',
-    context: 'everyday',
-    url: '/605572670_122215932062047100_7842864668271503382_n.jpg',
-    date: '2026-09-02',
-    is_favorite: true,
-    is_pinned: true,
-    tags: ['Nụ cười', 'Cafe', 'Khoảnh khắc'],
-    collection_ids: ['col-firstdays'],
-    location: { name: 'The Little Cafe, Sài Gòn' },
-    metadata: { occasion: 'Buổi hẹn chiều thứ Bảy', people: ['Em'] }
-  },
-  {
-    id: 'mem-2',
-    author_id: 'em',
-    author_name: 'Em',
-    title: 'Ảnh đôi đầu tiên bên bờ hồ',
-    description: 'Tấm hình chụp chung đầu tiên đầy kỷ niệm của hai đứa sau chuyến đi dạo.',
-    media_type: 'photo',
-    category: 'photo',
-    context: 'anniversary',
-    url: '/590610904_1909263110009109_2160755825373491978_n.jpg',
-    date: '2026-08-31',
-    is_favorite: true,
-    is_pinned: false,
-    tags: ['FirstPhoto', 'Hồ Tây', 'Kỷ niệm'],
-    collection_ids: ['col-firstdays'],
-    location: { name: 'Bờ hồ Tây' }
-  },
-  {
-    id: 'mem-3',
-    author_id: 'em',
-    author_name: 'Em',
-    title: 'Chúc anh ngủ ngon sau ngày dài',
-    description: 'Gửi anh một chút bình yên trước khi ngủ, nhớ uống nhiều nước nhé.',
-    media_type: 'voice',
-    category: 'voice',
-    context: 'everyday',
-    url: 'https://actions.google.com/sounds/v1/ambiences/rain_heavy.ogg',
-    date: '2026-08-28',
-    is_favorite: false,
-    is_pinned: true,
-    tags: ['Voice', 'Ngủ ngon', 'Yêu thương'],
-    metadata: { duration: 42 }
-  },
-  {
-    id: 'mem-4',
-    author_id: 'cuong',
-    author_name: 'Cường',
-    title: 'Gửi em — Những ngày thu dịu dàng',
-    description: 'Bức thư viết vào một buổi tối muộn khi nhìn những cơn gió nhẹ ngoài cửa sổ.',
-    media_type: 'letter',
-    category: 'letter',
-    context: 'date-night',
-    url: '',
-    date: '2026-08-20',
-    is_favorite: true,
-    is_pinned: false,
-    tags: ['Thư tay', 'Mùa thu', 'Cảm xúc'],
-    collection_ids: ['col-letters'],
-    metadata: {
-      letter_body:
-        'Có những ngày anh nghĩ rằng hạnh phúc không nằm ở những điều lớn lao, mà là khi ngồi cạnh em uống một tách trà ấm và nghe em kể về một ngày của mình.\n\nCảm ơn em vì đã đến và làm dịu đi những âu lo thường nhật.',
-      signature: 'Minh'
-    }
-  }
-];
+const DEFAULT_MEMORIES: MemoryItem[] = [];
 
 /** Safe LocalStorage JSON parser */
 function safeParse<T>(key: string, fallback: T): T {

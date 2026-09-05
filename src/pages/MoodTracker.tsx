@@ -13,11 +13,7 @@ interface MoodEntry {
   created_at: string;
 }
 
-const DEFAULT_MOODS: MoodEntry[] = [
-  { id: 'm-1', mood: 'loved', note: 'Được người ấy ôm từ phía sau, ấm áp vô cùng!', partner: 'partner1', created_at: new Date(Date.now() - 3600000 * 2).toISOString() },
-  { id: 'm-2', mood: 'happy', note: 'Đi ăn lẩu cùng nhau, cười nói suốt buổi.', partner: 'partner2', created_at: new Date(Date.now() - 3600000 * 24).toISOString() },
-  { id: 'm-3', mood: 'calm', note: 'Ngồi ngắm hoàng hôn bên bờ sông yên ả.', partner: 'partner1', created_at: new Date(Date.now() - 3600000 * 48).toISOString() },
-];
+const DEFAULT_MOODS: MoodEntry[] = [];
 
 const moods = [
   { key: 'loved', emoji: '🥰', label: 'Ngập tràn yêu', bg: 'bg-rose-500/15', text: 'text-rose-400', bar: 'bg-rose-500' },
@@ -99,8 +95,8 @@ export default function MoodTracker() {
   });
   const maxCount = Math.max(...Object.values(moodCounts), 1);
 
-  const p1 = profile?.partner1_name || 'Mcuong';
-  const p2 = profile?.partner2_name || 'Xnghi';
+  const p1 = profile?.partner1_name || 'Partner 1';
+  const p2 = profile?.partner2_name || 'Partner 2';
 
   return (
     <main className="pt-24 pb-12 min-h-screen">

@@ -16,35 +16,7 @@ interface TimelineEvent {
   created_at?: string;
 }
 
-const DEFAULT_TIMELINE: TimelineEvent[] = [
-  {
-    id: 'tl-1',
-    title: 'Lần Đầu Gặp Gỡ',
-    date: '2026-05-18',
-    event_type: 'first_meet',
-    story: 'Khoảnh khắc đầu tiên hai đứa chạm mắt nhau, thời gian dường như ngưng đọng trong không gian tĩnh lặng.',
-    location: 'Quán Cafe hẹn ước',
-    photos: [],
-  },
-  {
-    id: 'tl-2',
-    title: 'Tin Nhắn Làm Quen Đầu Tiên',
-    date: '2026-05-20',
-    event_type: 'first_message',
-    story: 'Những dòng tin nhắn vụng về nhưng ngập tràn háo hức thâu đêm suốt sáng.',
-    location: 'Hà Nội & Sài Gòn',
-    photos: [],
-  },
-  {
-    id: 'tl-3',
-    title: 'Chuyến Đi Chơi Đầu Tiên',
-    date: '2026-06-15',
-    event_type: 'first_trip',
-    story: 'Cùng nhau vi vu trên những cung đường lộng gió, ngắm hoàng hôn buông xuống chân mây.',
-    location: 'Đà Lạt mộng mơ',
-    photos: [],
-  },
-];
+const DEFAULT_TIMELINE: TimelineEvent[] = [];
 
 const typeIcons: Record<string, any> = {
   first_meet: Heart,

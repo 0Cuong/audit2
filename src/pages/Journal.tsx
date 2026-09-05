@@ -89,8 +89,8 @@ interface JournalDraft {
 
 // Default Authors Configuration
 const DEFAULT_AUTHORS: JournalAuthor[] = [
-  { id: 'author-1', name: 'Minh', avatarInitial: 'M', role: 'user' },
-  { id: 'author-2', name: 'Em', avatarInitial: 'E', role: 'partner' },
+  { id: 'author-1', name: 'Partner 1', avatarInitial: 'P', role: 'user' },
+  { id: 'author-2', name: 'Partner 2', avatarInitial: 'P', role: 'partner' },
 ];
 
 const ENTRY_TYPES: { id: JournalEntryType; label: string; icon: React.ReactNode }[] = [
@@ -112,54 +112,7 @@ const MOODS: { id: string; label: string; symbol: string }[] = [
   { id: 'tired', label: 'Mệt nhoài', symbol: 'Cần ôm' },
 ];
 
-const DEFAULT_JOURNAL_DATA: JournalEntry[] = [
-  {
-    id: 'jnl-sample-1',
-    author_id: 'author-1',
-    author_name: 'Minh',
-    type: 'memory',
-    title: 'Chiều mưa dưới hiên quán cũ',
-    content: 'Hôm nay trời mưa lất phất, hai đứa ngồi trú mưa dưới mái hiên quán trà, chia nhau một cốc trà sữa ấm nóng. Cảm giác bình yên đến lạ kỳ giữa phố thị tấp nập.',
-    mood: 'peaceful',
-    date: '2024-05-22',
-    time: '19:42',
-    created_at: '2024-05-22T19:42:00Z',
-    photos: [
-      'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1498804103079-a6351b050096?auto=format&fit=crop&w=800&q=80'
-    ],
-    tags: ['quán trà', 'mưa', 'hẹn hò'],
-    location: { name: 'Góc Trà Cũ, Hà Nội' },
-    is_favorite: true,
-    is_pinned: true,
-  },
-  {
-    id: 'jnl-sample-2',
-    author_id: 'author-2',
-    author_name: 'Em',
-    type: 'letter',
-    title: 'Món quà bất ngờ',
-    content: 'Em chuẩn bị chiếc hộp nhỏ này từ tuần trước, từng mảnh giấy gấp tay ghi lại những điều em thích ở anh. Lúc anh mở ra nhìn anh bối rối dễ thương vô cùng!',
-    mood: 'loved',
-    date: '2024-05-22',
-    time: '21:18',
-    created_at: '2024-05-22T21:18:00Z',
-    tags: ['quà tặng', 'bất ngờ'],
-    is_favorite: true,
-  },
-  {
-    id: 'jnl-sample-3',
-    author_id: 'author-2',
-    author_name: 'Em',
-    type: 'gratitude',
-    title: 'Cảm ơn anh vì bữa tối',
-    content: 'Sau một ngày dài làm việc căng thẳng, về đến nhà đã thấy anh nấu sẵn món canh kim chi nóng hổi. Sự chu đáo dịu dàng của anh làm tan biến hết mệt mỏi.',
-    mood: 'happy',
-    date: '2024-06-05',
-    time: '20:05',
-    created_at: '2024-06-05T20:05:00Z',
-  }
-];
+const DEFAULT_JOURNAL_DATA: JournalEntry[] = [];
 
 const DRAFT_KEY = 'cuongisme_journal_draft_v2';
 const LOCAL_STORAGE_KEY = 'cuongisme_journal_v2';

@@ -78,16 +78,16 @@ export default function Dashboard() {
   const [selectedMoodKey, setSelectedMoodKey] = useState<string | null>(null);
 
   // Real couple names & dates
-  const p1Name = profile?.partner1_name || 'Cường';
-  const p2Name = profile?.partner2_name || 'Nghi';
-  const p1Avatar = profile?.partner1_avatar || '/590610904_1909263110009109_2160755825373491978_n.jpg';
-  const p2Avatar = profile?.partner2_avatar || '/605572670_122215932062047100_7842864668271503382_n.jpg';
+  const p1Name = profile?.partner1_name || 'Partner 1';
+  const p2Name = profile?.partner2_name || 'Partner 2';
+  const p1Avatar = profile?.partner1_avatar || '';
+  const p2Avatar = profile?.partner2_avatar || '';
   const startDate = profile?.relationship_start;
 
   const formattedStartDate = useMemo(() => {
-    if (!startDate) return '18 Tháng 5, 2026';
+    if (!startDate) return '';
     const d = parseDateInput(startDate);
-    if (!d) return '18 Tháng 5, 2026';
+    if (!d) return '';
     return `${d.getDate()} Tháng ${d.getMonth() + 1}, ${d.getFullYear()}`;
   }, [startDate]);
 
@@ -104,28 +104,7 @@ export default function Dashboard() {
 
   // Load real memories
   const memories = useMemo(() => {
-    return safeGetStorage<MemoryItem[]>('cuongisme_memories_v2', [
-      {
-        id: 'mem-1',
-        title: 'Nụ cười tỏa nắng của em',
-        description: 'Khoảnh khắc chụp lại lúc em cười tươi rạng rỡ nhất tại quán cà phê góc phố.',
-        media_type: 'photo',
-        url: '/605572670_122215932062047100_7842864668271503382_n.jpg',
-        date: '2026-05-18',
-        is_favorite: true,
-        location: { name: 'The Little Cafe, Sài Gòn' },
-      },
-      {
-        id: 'mem-2',
-        title: 'Ảnh đôi đầu tiên bên bờ hồ',
-        description: 'Tấm hình chụp chung đầu tiên đầy kỷ niệm của hai đứa sau chuyến đi dạo.',
-        media_type: 'photo',
-        url: '/590610904_1909263110009109_2160755825373491978_n.jpg',
-        date: '2026-05-18',
-        is_favorite: true,
-        location: { name: 'Bờ hồ Tây' },
-      },
-    ]);
+    return safeGetStorage<MemoryItem[]>('cuongisme_memories_v2', []);
   }, []);
 
   // Spotlight Memory: prioritized favorite or first photo
@@ -135,36 +114,7 @@ export default function Dashboard() {
 
   // Load real upcoming anniversaries
   const anniversaries = useMemo(() => {
-    return safeGetStorage<AnniversaryEvent[]>('cuongisme_anniversaries', [
-      {
-        id: 'ann-1',
-        title: 'Kỷ Niệm Ngày Yêu Nhau',
-        date: '2026-05-18',
-        anniversary_type: 'yearly',
-        recurrence: 'yearly',
-      },
-      {
-        id: 'ann-4',
-        title: 'Kỷ Niệm Ngày 18 Hàng Tháng',
-        date: '2026-05-18',
-        anniversary_type: 'monthly',
-        recurrence: 'monthly',
-      },
-      {
-        id: 'ann-2',
-        title: 'Sinh Nhật Xuân Nghi',
-        date: '2005-01-03',
-        anniversary_type: 'birthday',
-        recurrence: 'birthday',
-      },
-      {
-        id: 'ann-3',
-        title: 'Sinh Nhật Mạnh Cường',
-        date: '2004-09-12',
-        anniversary_type: 'birthday',
-        recurrence: 'birthday',
-      },
-    ]);
+    return safeGetStorage<AnniversaryEvent[]>('cuongisme_anniversaries', []);
   }, []);
 
   // Compute nearest milestone
@@ -192,45 +142,12 @@ export default function Dashboard() {
 
   // Load real timeline events for visual chronology
   const timelineEvents = useMemo(() => {
-    return safeGetStorage<TimelineEvent[]>('cuongisme_timeline', [
-      {
-        id: 'tl-1',
-        title: 'Lần Đầu Gặp Gỡ',
-        date: '2026-05-18',
-        event_type: 'first_meet',
-        story: 'Khoảnh khắc đầu tiên hai đứa chạm mắt nhau, thời gian dường như ngưng đọng.',
-        location: 'Quán Cafe hẹn ước',
-      },
-      {
-        id: 'tl-2',
-        title: 'Tin Nhắn Làm Quen Đầu Tiên',
-        date: '2026-05-20',
-        event_type: 'first_message',
-        story: 'Những dòng tin nhắn vụng về nhưng ngập tràn háo hức thâu đêm.',
-        location: 'Hà Nội & Sài Gòn',
-      },
-      {
-        id: 'tl-3',
-        title: 'Chuyến Đi Chơi Đầu Tiên',
-        date: '2026-06-15',
-        event_type: 'first_trip',
-        story: 'Cùng nhau vi vu trên những cung đường lộng gió, ngắm hoàng hôn buông xuống.',
-        location: 'Đà Lạt mộng mơ',
-      },
-    ]);
+    return safeGetStorage<TimelineEvent[]>('cuongisme_timeline', []);
   }, []);
 
   // Load mood entries
   const [moodEntries, setMoodEntries] = useState<MoodEntry[]>(() => {
-    return safeGetStorage<MoodEntry[]>('cuongisme_moods', [
-      {
-        id: 'm-1',
-        mood: 'loved',
-        note: 'Được người ấy ôm từ phía sau, ấm áp vô cùng!',
-        partner: 'partner1',
-        created_at: new Date().toISOString(),
-      },
-    ]);
+    return safeGetStorage<MoodEntry[]>('cuongisme_moods', []);
   });
 
   const latestMood = moodEntries[0] || null;

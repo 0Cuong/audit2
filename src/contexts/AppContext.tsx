@@ -139,28 +139,23 @@ export const themeConfig: Record<ThemeId, {
 
 export const DEFAULT_PROFILE: CoupleProfile = {
   id: 'default-profile',
-  partner1_name: 'Mcuong',
-  partner1_avatar: '/590610904_1909263110009109_2160755825373491978_n.jpg',
-  partner1_gender: 'male',
-  partner1_birthday: '2004-09-12',
-  partner2_name: 'Xnghi',
-  partner2_avatar: '/605572670_122215932062047100_7842864668271503382_n.jpg',
-  partner2_gender: 'female',
-  partner2_birthday: '2005-01-03',
+  partner1_name: 'Partner 1',
+  partner1_avatar: '',
+  partner1_gender: 'unspecified',
+  partner1_birthday: null,
+  partner2_name: 'Partner 2',
+  partner2_avatar: '',
+  partner2_gender: 'unspecified',
+  partner2_birthday: null,
   relationship_status: 'dating',
-  relationship_start: '2026-05-18T00:00:00.000Z',
+  relationship_start: '',
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
   id: 'default-settings',
   language: 'vi',
   theme: 'dark',
-  contact_links: [
-    { label: 'Facebook Cuong', url: 'https://www.facebook.com/0Cuongisme', icon: 'facebook' },
-    { label: 'Instagram Cuong', url: 'https://www.instagram.com/_kodl0/', icon: 'instagram' },
-    { label: 'Facebook Nghi', url: 'https://www.facebook.com/nghinghi0301', icon: 'facebook' },
-    { label: 'Instagram Nghi', url: 'https://www.instagram.com/hx.nghii/', icon: 'instagram' },
-  ],
+  contact_links: [],
   privacy_mode: false,
   privacy_password: '',
   notifications_enabled: true,

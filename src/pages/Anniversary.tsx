@@ -14,38 +14,7 @@ interface AnniversaryEvent {
   photo_url?: string | null;
 }
 
-const DEFAULT_ANNIVERSARIES: AnniversaryEvent[] = [
-  {
-    id: 'ann-1',
-    title: 'Ngày Chính Thức Yêu Nhau',
-    date: '2026-05-18',
-    anniversary_type: 'yearly',
-    recurrence: 'yearly',
-    photo_url: '/590610904_1909263110009109_2160755825373491978_n.jpg',
-  },
-  {
-    id: 'ann-2',
-    title: 'Sinh Nhật Xnghi',
-    date: '2005-01-03',
-    anniversary_type: 'birthday',
-    recurrence: 'birthday',
-    photo_url: '/605572670_122215932062047100_7842864668271503382_n.jpg',
-  },
-  {
-    id: 'ann-3',
-    title: 'Sinh Nhật Mcuong',
-    date: '2004-09-12',
-    anniversary_type: 'birthday',
-    recurrence: 'birthday',
-  },
-  {
-    id: 'ann-4',
-    title: 'Kỷ Niệm Ngày 18 Hàng Tháng',
-    date: '2026-05-18',
-    anniversary_type: 'monthly',
-    recurrence: 'monthly',
-  }
-];
+const DEFAULT_ANNIVERSARIES: AnniversaryEvent[] = [];
 
 export default function AnniversaryCenter() {
   const { t, tc, lang } = useApp();
