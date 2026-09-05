@@ -13,7 +13,6 @@ import {
   ExternalLink, 
   Radio, 
   Sparkles, 
-  Disc3, 
   ListMusic, 
   SkipBack, 
   SkipForward,
@@ -363,9 +362,10 @@ export default function MusicPage() {
 
   // Cleanup on unmount
   useEffect(() => {
+    const audio = audioRef.current;
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
+      if (audio) {
+        audio.pause();
       }
     };
   }, []);

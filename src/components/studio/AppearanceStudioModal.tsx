@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback, useId } from 'react';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { useState, useEffect, useRef, useCallback, useId } from 'react';
+import { motion, AnimatePresence, useReducedMotion, type Variants } from 'framer-motion';
 import {
   X,
   Palette,
@@ -167,7 +167,7 @@ export default function AppearanceStudioModal() {
   const mobileTabRailRef = useRef<HTMLDivElement>(null);
   const activeMobileTabRef = useRef<HTMLButtonElement>(null);
   const modalContainerRef = useRef<HTMLDivElement>(null);
-  const feedbackTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const modalHeadingId = useId();
   const shouldReduceMotion = useReducedMotion();
 
@@ -278,7 +278,7 @@ export default function AppearanceStudioModal() {
   }, [resetAllPersonalization]);
 
   // Motion Variants
-  const modalVariants = {
+  const modalVariants: Variants = {
     hidden: {
       opacity: 0,
       scale: shouldReduceMotion ? 1 : 0.97,
@@ -288,7 +288,7 @@ export default function AppearanceStudioModal() {
       opacity: 1,
       scale: 1,
       y: 0,
-      transition: { duration: 0.22, ease: [0.16, 1, 0.3, 1] },
+      transition: { duration: 0.22, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
     },
     exit: {
       opacity: 0,
@@ -298,7 +298,7 @@ export default function AppearanceStudioModal() {
     },
   };
 
-  const contentTabVariants = {
+  const contentTabVariants: Variants = {
     initial: { opacity: 0, y: shouldReduceMotion ? 0 : 6 },
     animate: { opacity: 1, y: 0, transition: { duration: 0.18, ease: 'easeOut' } },
     exit: { opacity: 0, transition: { duration: 0.1 } },

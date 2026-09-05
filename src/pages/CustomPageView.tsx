@@ -2,9 +2,8 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Code, FileText, Palette, Sliders, Terminal, Sparkles, RefreshCw,
-  MonitorPlay, Smartphone, Tablet, Monitor, Download, Copy,
-  CheckCircle2, AlertCircle, X, Zap, Gamepad2, Calculator,
-  Flame, Clock, Volume2, RotateCcw
+  MonitorPlay, Smartphone, Tablet, Monitor,
+  CheckCircle2, AlertCircle, X
 } from 'lucide-react';
 
 // ============================================================================

@@ -15,12 +15,8 @@ import {
   ChevronLeft,
   ChevronRight,
   MapPin,
-  Tag,
-  Check,
   RotateCcw,
   BookMarked,
-  Calendar,
-  Layers,
   Heart,
   FileText,
   Bookmark,
@@ -173,7 +169,7 @@ const LOCAL_STORAGE_KEY = 'cuongisme_journal_v2';
 // ==========================================
 
 export default function Journal() {
-  const { t, tc, lang } = useApp();
+  const { t, lang } = useApp();
 
   // Primary State
   const [entries, setEntries] = useState<JournalEntry[]>(() => {
@@ -187,9 +183,6 @@ export default function Journal() {
     }
     return DEFAULT_JOURNAL_DATA;
   });
-
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -213,8 +206,6 @@ export default function Journal() {
   useEffect(() => {
     let isMounted = true;
     const fetchRemoteEntries = async () => {
-      setIsLoading(true);
-      setLoadError(null);
       try {
         const { data, error } = await supabase
           .from('journal_entries')
@@ -250,8 +241,6 @@ export default function Journal() {
         }
       } catch (err: any) {
         console.warn('Supabase fetch notice (using robust local fallback):', err.message);
-      } finally {
-        if (isMounted) setIsLoading(false);
       }
     };
 

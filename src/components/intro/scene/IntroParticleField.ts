@@ -222,7 +222,7 @@ export class IntroParticleField {
     const t = this.easeInOut(p.convergenceT);
     let x = p.originX + (p.targetX - p.originX) * t;
     let y = p.originY + (p.targetY - p.originY) * t;
-    let z = p.originZ + (p.targetZ - p.originZ) * t;
+    const z = p.originZ + (p.targetZ - p.originZ) * t;
 
     // Orbital wobble when settled (scale smoothly by convergence to avoid snapping)
     const wobbleIntensity = Math.pow(Math.max(0, p.convergenceT - 0.5) * 2, 2); // 0 to 1 smoothly in second half of convergence

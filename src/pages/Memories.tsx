@@ -22,17 +22,9 @@ import {
   Sparkles,
   Volume2,
   VolumeX,
-  Check,
-  Tag,
   MapPin,
   Clock,
-  User,
-  FolderPlus,
-  BookOpen,
-  Filter,
-  RefreshCw,
-  SlidersHorizontal,
-  Info
+  User
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { supabase } from '../lib/supabase';
@@ -431,8 +423,6 @@ const AudioMemoryPlayer: React.FC<{ url: string; title?: string }> = ({ url, tit
     setIsMuted(!isMuted);
   };
 
-  const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
-
   return (
     <div className="w-full bg-zinc-900/90 dark:bg-zinc-950/80 border border-white/10 rounded-2xl p-4 flex flex-col gap-3">
       <audio ref={audioRef} src={url} preload="metadata" />
@@ -530,7 +520,7 @@ const LetterCardContent: React.FC<{
 interface MemoryCardProps {
   memory: MemoryItem;
   tc: any;
-  lang: string;
+  lang: 'en' | 'vi';
   onOpen: (m: MemoryItem) => void;
   onToggleFavorite: (id: string, e: React.MouseEvent) => void;
   onTogglePin: (id: string, e: React.MouseEvent) => void;
@@ -731,7 +721,7 @@ const MemoryCard: React.FC<MemoryCardProps> = ({
 interface MemoryViewerProps {
   memory: MemoryItem | null;
   memories: MemoryItem[];
-  lang: string;
+  lang: 'en' | 'vi';
   onClose: () => void;
   onSelect: (m: MemoryItem) => void;
   onToggleFavorite: (id: string) => void;
@@ -749,9 +739,7 @@ const MemoryViewer: React.FC<MemoryViewerProps> = ({
   onTogglePin,
   onDelete
 }) => {
-  if (!memory) return null;
-
-  const currentIndex = memories.findIndex((m) => m.id === memory.id);
+  const currentIndex = memory ? memories.findIndex((m) => m.id === memory.id) : -1;
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex >= 0 && currentIndex < memories.length - 1;
 
@@ -765,6 +753,7 @@ const MemoryViewer: React.FC<MemoryViewerProps> = ({
 
   // Keyboard navigation
   useEffect(() => {
+    if (!memory) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
       else if (e.key === 'ArrowLeft') handlePrev();
@@ -773,7 +762,9 @@ const MemoryViewer: React.FC<MemoryViewerProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, handlePrev, handleNext]);
+  }, [memory, onClose, handlePrev, handleNext]);
+
+  if (!memory) return null;
 
   return (
     <div
@@ -1156,7 +1147,7 @@ const TimelineView: React.FC<TimelineViewProps> = ({
 
 interface MemoryComposerProps {
   isOpen: boolean;
-  tc: any;
+  tc?: any;
   collections: MemoryCollection[];
   onClose: () => void;
   onSave: (newMem: Omit<MemoryItem, 'id'>) => Promise<void>;
@@ -1164,7 +1155,6 @@ interface MemoryComposerProps {
 
 const MemoryComposer: React.FC<MemoryComposerProps> = ({
   isOpen,
-  tc,
   collections,
   onClose,
   onSave
@@ -1817,7 +1807,7 @@ export default function Memories() {
     safeParse<MemoryItem[]>(STORAGE_KEY, DEFAULT_MEMORIES)
   );
 
-  const [collections, setCollections] = useState<MemoryCollection[]>(() =>
+  const [collections] = useState<MemoryCollection[]>(() =>
     safeParse<MemoryCollection[]>(COLLECTIONS_STORAGE_KEY, DEFAULT_COLLECTIONS)
   );
 
