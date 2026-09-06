@@ -13,19 +13,30 @@ interface PortraitProps {
   name: string;
   avatarUrl: string;
   role: 'partner1' | 'partner2';
-  delay: number;
 }
 
-function PortraitCard({ name, avatarUrl, role, delay }: PortraitProps) {
-  const [imageError, setImageError] = useState(false);
+function PortraitCard({ name, avatarUrl, role }: PortraitProps) {
+  const [currentSrc, setCurrentSrc] = useState<string>(avatarUrl);
+  const [hasError, setHasError] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
-  const shouldReduceMotion = useReducedMotion();
 
-  // Reset error when URL changes
   useEffect(() => {
-    setImageError(false);
+    setCurrentSrc(avatarUrl);
+    setHasError(false);
     setIsLoaded(false);
   }, [avatarUrl]);
+
+  const handleError = () => {
+    if (currentSrc === '/xnghi.jpg') {
+      setCurrentSrc('/xuannghi.jpg');
+      return;
+    }
+    if (currentSrc === '/xuannghi.jpg') {
+      setCurrentSrc('/xnghi.jpg');
+      return;
+    }
+    setHasError(true);
+  };
 
   const initials = useMemo(() => {
     const parts = name.trim().split(/\s+/);
@@ -36,58 +47,36 @@ function PortraitCard({ name, avatarUrl, role, delay }: PortraitProps) {
   }, [name, role]);
 
   return (
-    <motion.div
-      initial={shouldReduceMotion ? false : { opacity: 0, y: 16, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{
-        duration: shouldReduceMotion ? 0.2 : 0.8,
-        delay: shouldReduceMotion ? 0 : delay,
-        ease: [0.16, 1, 0.3, 1],
-      }}
-      className="group relative flex flex-col items-center"
-    >
-      <div className="relative w-28 h-36 sm:w-36 sm:h-48 md:w-44 md:h-56 rounded-2xl overflow-hidden bg-zinc-900/90 border border-white/[0.12] shadow-2xl transition-transform duration-500 group-hover:scale-[1.02]">
-        {/* Subtle inner sheen */}
-        <div className="absolute inset-0 z-10 pointer-events-none rounded-2xl ring-1 ring-inset ring-white/[0.08]" />
-
-        {!imageError && avatarUrl ? (
+    <div className="flex flex-col items-center">
+      <div className="relative w-32 h-44 sm:w-40 sm:h-52 md:w-48 md:h-64 overflow-hidden bg-zinc-900 border border-white/10">
+        {!hasError && currentSrc ? (
           <>
             {!isLoaded && (
-              <div className="absolute inset-0 bg-zinc-900 flex items-center justify-center animate-pulse">
+              <div className="absolute inset-0 bg-zinc-900 flex items-center justify-center">
                 <span className="text-zinc-600 font-serif text-lg">{initials}</span>
               </div>
             )}
             <img
-              src={avatarUrl}
+              src={currentSrc}
               alt={`Ảnh chân dung của ${name}`}
               loading="eager"
               onLoad={() => setIsLoaded(true)}
-              onError={() => setImageError(true)}
-              className={`w-full h-full object-cover object-center transition-opacity duration-700 ${
+              onError={handleError}
+              className={`w-full h-full object-cover object-center transition-opacity duration-300 ${
                 isLoaded ? 'opacity-100' : 'opacity-0'
               }`}
             />
           </>
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900/90 text-zinc-400 p-4">
-            <span className="font-serif text-2xl sm:text-3xl text-zinc-300 font-light mb-1">
+          <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900 text-zinc-500 p-4">
+            <span className="font-serif text-2xl sm:text-3xl text-zinc-400 font-light mb-1">
               {initials}
             </span>
             <User className="w-4 h-4 text-zinc-600 opacity-60" />
           </div>
         )}
-
-        {/* Gentle bottom gradient for atmosphere */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none z-10" />
-
-        {/* Individual partner label */}
-        <div className="absolute bottom-2.5 inset-x-0 z-20 text-center px-2 pointer-events-none">
-          <p className="text-xs sm:text-sm font-medium text-white/90 drop-shadow-md truncate">
-            {name}
-          </p>
-        </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -97,8 +86,6 @@ export default function IntroExperience({
 }: IntroExperienceProps) {
   const { profile } = useApp();
   const shouldReduceMotion = useReducedMotion();
-
-  const [phase, setPhase] = useState<'revealing' | 'settled'>('revealing');
   const [isVisible, setIsVisible] = useState(true);
   const completedRef = useRef(false);
 
@@ -117,26 +104,13 @@ export default function IntroExperience({
   // Authentic Date Formatting (Strictly NO fake fallback date)
   const relationshipSubtitle = useMemo(() => {
     const rawDate = profile?.relationship_start;
-    if (!rawDate) {
-      return {
-        isDate: false,
-        text: 'Một không gian riêng cho hai người',
-      };
-    }
+    if (!rawDate) return null;
     const parsed = parseDateInput(rawDate);
-    if (!parsed) {
-      return {
-        isDate: false,
-        text: 'Một không gian riêng cho hai người',
-      };
-    }
+    if (!parsed) return null;
     const day = parsed.getDate();
     const month = parsed.getMonth() + 1;
     const year = parsed.getFullYear();
-    return {
-      isDate: true,
-      text: `Bắt đầu từ ngày ${day} tháng ${month}, ${year}`,
-    };
+    return `Bắt đầu từ ngày ${day}/${month}/${year}`;
   }, [profile?.relationship_start]);
 
   const finish = useCallback(() => {
@@ -153,7 +127,7 @@ export default function IntroExperience({
 
     setTimeout(() => {
       onComplete?.();
-    }, 350);
+    }, 300);
   }, [onComplete]);
 
   useEffect(() => {
@@ -171,16 +145,10 @@ export default function IntroExperience({
       }
     }
 
-    if (shouldReduceMotion) {
-      const timer = setTimeout(() => {
-        setPhase('settled');
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-
-    // Sequence Phasing: Total ~3.8s confident flow
-    const t1 = setTimeout(() => setPhase('settled'), 400);
-    const t2 = setTimeout(() => finish(), 3900);
+    // Calm auto-advance timer
+    const autoTimer = setTimeout(() => {
+      finish();
+    }, 4000);
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter') {
@@ -192,32 +160,27 @@ export default function IntroExperience({
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
+      clearTimeout(autoTimer);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [finish, forceReplay, onComplete, shouldReduceMotion]);
+  }, [finish, forceReplay, onComplete]);
 
   if (!isVisible) return null;
 
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 1 }}
+        initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0 }}
+        animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        className="fixed inset-0 z-[100] bg-[#060608] flex flex-col items-center justify-center p-4 sm:p-6 select-none cursor-pointer overflow-hidden"
+        transition={{ duration: shouldReduceMotion ? 0.1 : 0.35, ease: [0.16, 1, 0.3, 1] }}
+        className="fixed inset-0 z-[100] bg-[#09090c] flex flex-col items-center justify-center p-4 sm:p-6 select-none cursor-pointer overflow-hidden"
         onClick={finish}
         role="dialog"
         aria-modal="true"
-        aria-label="Khởi đầu không gian riêng tư"
+        aria-label="Màn hình mở đầu"
       >
-        {/* Subtle Quiet Warm Ambient Glow - Restrained, single soft center */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] sm:w-[580px] h-[420px] sm:h-[580px] rounded-full bg-amber-500/[0.04] blur-[120px]" />
-        </div>
-
-        {/* Skip / Enter Action */}
+        {/* Top-Right Quiet CTA */}
         <div className="absolute top-5 right-5 sm:top-7 sm:right-7 z-30">
           <button
             type="button"
@@ -225,84 +188,44 @@ export default function IntroExperience({
               e.stopPropagation();
               finish();
             }}
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] text-xs font-medium text-zinc-300 hover:text-white transition duration-200 active:scale-95"
-            aria-label="Vào không gian ngay"
+            className="group flex items-center gap-1.5 text-xs font-normal tracking-wide text-zinc-400 hover:text-zinc-200 transition-colors py-1.5 px-3 focus:outline-none"
+            aria-label="Vào không gian"
           >
             <span>Vào ngay</span>
-            <ArrowRight className="w-3.5 h-3.5 text-zinc-400" />
+            <ArrowRight className="w-3.5 h-3.5 text-zinc-500 group-hover:text-zinc-300 group-hover:translate-x-0.5 transition-all" />
           </button>
         </div>
 
-        {/* Main Center Editorial Content */}
+        {/* Center Editorial Diptych and Hierarchy */}
         <div className="relative z-20 max-w-xl w-full flex flex-col items-center text-center">
-          {/* Couple's Editorial Diptych (Two Identities Entering the Space) */}
-          <div className="flex items-center justify-center gap-3 sm:gap-6 mb-7 sm:mb-8">
+          {/* Couple's Editorial Diptych */}
+          <div className="flex items-center justify-center gap-4 sm:gap-6">
             <PortraitCard
               name={p1Name}
               avatarUrl={p1Avatar}
               role="partner1"
-              delay={0.1}
             />
-
-            {/* Quiet Linking Amper / Multiply Symbol */}
-            <motion.div
-              initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{
-                duration: shouldReduceMotion ? 0.2 : 0.6,
-                delay: shouldReduceMotion ? 0 : 0.3,
-                ease: [0.16, 1, 0.3, 1],
-              }}
-              className="text-amber-400/70 font-serif text-2xl sm:text-3xl font-light select-none px-1"
-            >
-              ×
-            </motion.div>
-
             <PortraitCard
               name={p2Name}
               avatarUrl={p2Avatar}
               role="partner2"
-              delay={0.2}
             />
           </div>
 
           {/* Editorial Names & Authentic Date */}
-          <motion.div
-            initial={shouldReduceMotion ? false : { opacity: 0, y: 12 }}
-            animate={{
-              opacity: phase === 'settled' ? 1 : 0.8,
-              y: phase === 'settled' ? 0 : 6,
-            }}
-            transition={{
-              duration: shouldReduceMotion ? 0.2 : 0.7,
-              delay: shouldReduceMotion ? 0 : 0.35,
-              ease: [0.16, 1, 0.3, 1],
-            }}
-            className="space-y-2.5 max-w-md px-2"
-          >
+          <div className="mt-8 sm:mt-10 space-y-2 max-w-md px-2">
             <h1 className="font-serif text-2xl sm:text-3xl md:text-4xl font-normal tracking-tight text-zinc-100">
               <span>{p1Name}</span>
-              <span className="text-amber-400/80 font-light mx-2.5">×</span>
+              <span className="font-light text-zinc-400 mx-2">&</span>
               <span>{p2Name}</span>
             </h1>
 
-            <p className="text-xs sm:text-sm font-light text-zinc-400/90 leading-relaxed">
-              {relationshipSubtitle.text}
-            </p>
-          </motion.div>
-
-          {/* Minimal, restrained interactive cue */}
-          <motion.div
-            initial={shouldReduceMotion ? false : { opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{
-              delay: shouldReduceMotion ? 0 : 1.0,
-              duration: 0.6,
-            }}
-            className="mt-10 sm:mt-12 flex items-center justify-center gap-2 text-zinc-500 text-xs font-light tracking-wide"
-          >
-            <span>Nhấn bất kỳ đâu để bắt đầu</span>
-          </motion.div>
+            {relationshipSubtitle && (
+              <p className="text-xs sm:text-sm font-normal text-zinc-400 tracking-wide">
+                {relationshipSubtitle}
+              </p>
+            )}
+          </div>
         </div>
       </motion.div>
     </AnimatePresence>
