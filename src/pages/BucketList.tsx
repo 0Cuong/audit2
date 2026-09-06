@@ -17,7 +17,7 @@ const catIcons: Record<Exclude<CategoryType, 'all'>, LucideIcon> = {
 };
 
 export default function BucketList() {
-  const { t, tc, profile } = useApp();
+  const { t, tc } = useApp();
   const { items, isLoading, addItem, updateItem, deleteItem } = useBucket();
   
   const [cat, setCat] = useState<CategoryType>('all');

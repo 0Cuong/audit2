@@ -1,7 +1,7 @@
 import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
-import { AppProvider, useApp } from './contexts/AppContext';
+import { AppProvider } from './contexts/AppContext';
 import { PersonalizationProvider, usePersonalization } from './contexts/PersonalizationContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -33,7 +33,6 @@ const SettingsPage = lazy(() => import('./pages/Settings'));
 const CustomPageView = lazy(() => import('./pages/CustomPageView'));
 
 function ThemedApp() {
-  const { t } = useApp();
   const { appearance, background } = usePersonalization();
   const location = useLocation();
   const [showIntro, setShowIntro] = useState(true);
@@ -143,8 +142,6 @@ function ThemedApp() {
       {showIntro && (
         <IntroExperience
           forceReplay={forceReplay}
-          brandName={t('brand') || 'CUONGISME'}
-          tagline={t('tagline') || 'Nơi lưu giữ hành trình yêu của tụi mình'}
           onComplete={() => {
             setShowIntro(false);
             setForceReplay(false);

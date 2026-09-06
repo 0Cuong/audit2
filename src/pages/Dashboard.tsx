@@ -17,7 +17,6 @@ import {
   Layers,
   Smile,
   ArrowUpRight,
-  Check,
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { usePersonalization } from '../contexts/PersonalizationContext';
@@ -25,6 +24,8 @@ import { calculateTimeTogether, getDaysUntilAnniversary, formatDateLocale, parse
 import { safeGetStorage, safeSetStorage } from '../lib/storage';
 import BlockContainer from '../components/blocks/BlockContainer';
 import { renderWidget } from '../components/widgets/WidgetRegistry';
+
+import Avatar from '../components/ui/Avatar';
 
 interface MemoryItem {
   id: string;
@@ -78,10 +79,14 @@ export default function Dashboard() {
   const [selectedMoodKey, setSelectedMoodKey] = useState<string | null>(null);
 
   // Real couple names & dates
-  const p1Name = profile?.partner1_name || 'Partner 1';
-  const p2Name = profile?.partner2_name || 'Partner 2';
-  const p1Avatar = profile?.partner1_avatar || '';
-  const p2Avatar = profile?.partner2_avatar || '';
+  const p1Name = profile?.partner1_name || 'Cường';
+  const p2Name = profile?.partner2_name || 'Nghi';
+  const p1Avatar = profile?.partner1_avatar && !profile.partner1_avatar.includes('590610904')
+    ? profile.partner1_avatar
+    : '/mcuong.jpg';
+  const p2Avatar = profile?.partner2_avatar && !profile.partner2_avatar.includes('605572670')
+    ? profile.partner2_avatar
+    : '/xnghi.jpg';
   const startDate = profile?.relationship_start;
 
   const formattedStartDate = useMemo(() => {
@@ -182,20 +187,16 @@ export default function Dashboard() {
               {/* Couple portraits & privacy indicator */}
               <div className="flex items-center gap-3">
                 <div className="flex -space-x-3 items-center">
-                  <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-[#09090c] ring-1 ring-white/15 bg-zinc-800">
-                    <img
-                      src={p1Avatar}
-                      alt={p1Name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-[#09090c] ring-1 ring-white/15 bg-zinc-800">
-                    <img
-                      src={p2Avatar}
-                      alt={p2Name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
+                  <Avatar
+                    src={p1Avatar}
+                    alt={p1Name}
+                    className="w-12 h-12 rounded-full border-2 border-[#09090c] ring-1 ring-white/15"
+                  />
+                  <Avatar
+                    src={p2Avatar}
+                    alt={p2Name}
+                    className="w-12 h-12 rounded-full border-2 border-[#09090c] ring-1 ring-white/15"
+                  />
                 </div>
 
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/10 text-[11px] font-mono text-zinc-400">
@@ -363,7 +364,7 @@ export default function Dashboard() {
           </div>
 
           <div className="relative pl-6 sm:pl-8 border-l border-white/10 space-y-8">
-            {timelineEvents.slice(0, 3).map((event, idx) => (
+            {timelineEvents.slice(0, 3).map((event) => (
               <div key={event.id} className="relative group">
                 {/* Visual node on the timeline line */}
                 <div className="absolute -left-[31px] sm:-left-[39px] top-1 w-3.5 h-3.5 rounded-full bg-[#09090c] border-2 border-amber-400/80 group-hover:border-amber-300 group-hover:scale-125 transition-transform" />

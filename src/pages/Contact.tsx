@@ -3,11 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Heart, 
   Send, 
-  Check, 
-  MessageCircle, 
-  Sparkles, 
-  MapPin, 
-  Calendar 
+  Check 
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { safeGetStorage, safeSetStorage } from '../lib/storage';
@@ -19,14 +15,20 @@ interface NoteItem {
   created_at: string;
 }
 
+import Avatar from '../components/ui/Avatar';
+
 export default function Contact() {
-  const { t, profile } = useApp();
+  const { profile } = useApp();
 
-  const p1Name = profile?.partner1_name || '';
-  const p2Name = profile?.partner2_name || '';
+  const p1Name = profile?.partner1_name || 'Cường';
+  const p2Name = profile?.partner2_name || 'Nghi';
 
-  const p1Avatar = profile?.partner1_avatar || '';
-  const p2Avatar = profile?.partner2_avatar || '';
+  const p1Avatar = profile?.partner1_avatar && !profile.partner1_avatar.includes('590610904')
+    ? profile.partner1_avatar
+    : '/mcuong.jpg';
+  const p2Avatar = profile?.partner2_avatar && !profile.partner2_avatar.includes('605572670')
+    ? profile.partner2_avatar
+    : '/xnghi.jpg';
 
   const [notes, setNotes] = useState<NoteItem[]>(() => {
     return safeGetStorage<NoteItem[]>('cuongisme_contact_notes', []);
@@ -86,13 +88,11 @@ export default function Contact() {
           <div className="p-6 rounded-3xl bg-zinc-900/60 border border-white/[0.08] flex flex-col justify-between space-y-6">
             <div className="space-y-4">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-2xl overflow-hidden bg-zinc-800 border border-white/10 shrink-0">
-                  <img
-                    src={p1Avatar}
-                    alt={p1Name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
+                <Avatar
+                  src={p1Avatar}
+                  alt={p1Name}
+                  className="w-16 h-16 rounded-2xl border border-white/10"
+                />
                 <div>
                   <h2 className="font-serif text-xl text-zinc-100 font-normal">
                     {p1Name}
@@ -144,13 +144,11 @@ export default function Contact() {
           <div className="p-6 rounded-3xl bg-zinc-900/60 border border-white/[0.08] flex flex-col justify-between space-y-6">
             <div className="space-y-4">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-2xl overflow-hidden bg-zinc-800 border border-white/10 shrink-0">
-                  <img
-                    src={p2Avatar}
-                    alt={p2Name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
+                <Avatar
+                  src={p2Avatar}
+                  alt={p2Name}
+                  className="w-16 h-16 rounded-2xl border border-white/10"
+                />
                 <div>
                   <h2 className="font-serif text-xl text-zinc-100 font-normal">
                     {p2Name}

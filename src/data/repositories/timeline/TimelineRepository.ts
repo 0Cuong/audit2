@@ -6,7 +6,7 @@ import { z } from 'zod';
 export type CreateTimelineDTO = Omit<TimelineEventEntity, 'id' | 'created_at'>;
 export type UpdateTimelineDTO = Partial<CreateTimelineDTO>;
 
-export interface ITimelineRepository extends BaseRepository<TimelineEventEntity, CreateTimelineDTO, UpdateTimelineDTO> {}
+export type ITimelineRepository = BaseRepository<TimelineEventEntity, CreateTimelineDTO, UpdateTimelineDTO>;
 
 export class SupabaseTimelineRepository implements ITimelineRepository {
   private static readonly TABLE = 'timeline_events';
@@ -54,7 +54,7 @@ export class SupabaseTimelineRepository implements ITimelineRepository {
   }
 
   async create(data: CreateTimelineDTO): Promise<TimelineEventEntity> {
-    const optimisticId = \`local-\${Date.now()}\`;
+    const optimisticId = `local-${Date.now()}`;
     const optimisticEntry: TimelineEventEntity = { ...data, id: optimisticId };
     
     const cached = this.getCachedData();

@@ -6,7 +6,7 @@ import { z } from 'zod';
 export type CreateLetterDTO = Omit<LoveLetterEntity, 'id' | 'created_at'>;
 export type UpdateLetterDTO = Partial<CreateLetterDTO>;
 
-export interface ILetterRepository extends BaseRepository<LoveLetterEntity, CreateLetterDTO, UpdateLetterDTO> {}
+export type ILetterRepository = BaseRepository<LoveLetterEntity, CreateLetterDTO, UpdateLetterDTO>;
 
 export class SupabaseLetterRepository implements ILetterRepository {
   private static readonly TABLE = 'love_letters';
@@ -54,7 +54,7 @@ export class SupabaseLetterRepository implements ILetterRepository {
   }
 
   async create(data: CreateLetterDTO): Promise<LoveLetterEntity> {
-    const optimisticId = \`local-\${Date.now()}\`;
+    const optimisticId = `local-${Date.now()}`;
     const optimisticEntry: LoveLetterEntity = { 
       ...data, 
       id: optimisticId,

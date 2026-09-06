@@ -6,7 +6,7 @@ import { z } from 'zod';
 export type CreateBucketDTO = Omit<BucketItemEntity, 'id' | 'created_at'>;
 export type UpdateBucketDTO = Partial<CreateBucketDTO>;
 
-export interface IBucketRepository extends BaseRepository<BucketItemEntity, CreateBucketDTO, UpdateBucketDTO> {}
+export type IBucketRepository = BaseRepository<BucketItemEntity, CreateBucketDTO, UpdateBucketDTO>;
 
 export class SupabaseBucketRepository implements IBucketRepository {
   private static readonly TABLE = 'bucket_list_items';
@@ -54,7 +54,7 @@ export class SupabaseBucketRepository implements IBucketRepository {
   }
 
   async create(data: CreateBucketDTO): Promise<BucketItemEntity> {
-    const optimisticId = \`local-\${Date.now()}\`;
+    const optimisticId = `local-${Date.now()}`;
     const optimisticEntry: BucketItemEntity = { 
       ...data, 
       id: optimisticId,

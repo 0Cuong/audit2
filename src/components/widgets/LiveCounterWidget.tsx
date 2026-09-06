@@ -6,6 +6,7 @@ import { useApp } from '../../contexts/AppContext';
 import { usePersonalization } from '../../contexts/PersonalizationContext';
 import { calculateTimeTogether } from '../../lib/dateUtils';
 import { type WorkspaceBlock } from '../../types/personalization';
+import Avatar from '../ui/Avatar';
 
 interface LiveCounterWidgetProps {
   block?: WorkspaceBlock;
@@ -32,10 +33,18 @@ export default function LiveCounterWidget({ block: _block }: LiveCounterWidgetPr
     { value: time.hours, label: 'GIỜ' },
   ];
 
-  const partner1Name = profile?.partner1_name || identity.partner1Name || 'Partner 1';
-  const partner2Name = profile?.partner2_name || identity.partner2Name || 'Partner 2';
-  const partner1Avatar = profile?.partner1_avatar || identity.partner1Avatar;
-  const partner2Avatar = profile?.partner2_avatar || identity.partner2Avatar;
+  const partner1Name = profile?.partner1_name || identity.partner1Name || 'Cường';
+  const partner2Name = profile?.partner2_name || identity.partner2Name || 'Nghi';
+  const partner1Avatar = (profile?.partner1_avatar && !profile.partner1_avatar.includes('590610904'))
+    ? profile.partner1_avatar
+    : (identity.partner1Avatar && !identity.partner1Avatar.includes('590610904'))
+    ? identity.partner1Avatar
+    : '/mcuong.jpg';
+  const partner2Avatar = (profile?.partner2_avatar && !profile.partner2_avatar.includes('605572670'))
+    ? profile.partner2_avatar
+    : (identity.partner2Avatar && !identity.partner2Avatar.includes('605572670'))
+    ? identity.partner2Avatar
+    : '/xnghi.jpg';
 
   return (
     <section className="text-center py-4 relative select-none">
@@ -48,20 +57,16 @@ export default function LiveCounterWidget({ block: _block }: LiveCounterWidgetPr
         <div className="flex items-center justify-center gap-3 sm:gap-4 mb-3">
           {/* Partner 1 */}
           <div className="flex items-center gap-2.5 bg-zinc-900/80 border border-white/10 px-3.5 py-1.5 rounded-full shadow-lg backdrop-blur-md">
-            {partner1Avatar ? (
-              <img
-                src={partner1Avatar}
-                alt={partner1Name}
-                className="w-8 h-8 rounded-full object-cover border border-white/20"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-zinc-800 border border-white/20 flex items-center justify-center text-white font-pixel text-xs">
-                {partner1Name?.charAt(0) || 'M'}
-              </div>
-            )}
+            <Avatar
+              src={partner1Avatar}
+              alt={partner1Name}
+              className="w-8 h-8 rounded-full border border-white/20"
+              fallback={
+                <div className="w-full h-full rounded-full bg-zinc-800 flex items-center justify-center text-white font-pixel text-xs">
+                  {partner1Name?.charAt(0) || 'M'}
+                </div>
+              }
+            />
             <span className="text-sm sm:text-base font-bold tracking-wide text-zinc-100">
               {partner1Name}
             </span>
@@ -82,20 +87,16 @@ export default function LiveCounterWidget({ block: _block }: LiveCounterWidgetPr
             <span className="text-sm sm:text-base font-bold tracking-wide text-zinc-100">
               {partner2Name}
             </span>
-            {partner2Avatar ? (
-              <img
-                src={partner2Avatar}
-                alt={partner2Name}
-                className="w-8 h-8 rounded-full object-cover border border-white/20"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-zinc-800 border border-white/20 flex items-center justify-center text-white font-pixel text-xs">
-                {partner2Name?.charAt(0) || 'N'}
-              </div>
-            )}
+            <Avatar
+              src={partner2Avatar}
+              alt={partner2Name}
+              className="w-8 h-8 rounded-full border border-white/20"
+              fallback={
+                <div className="w-full h-full rounded-full bg-zinc-800 flex items-center justify-center text-white font-pixel text-xs">
+                  {partner2Name?.charAt(0) || 'N'}
+                </div>
+              }
+            />
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
@@ -336,7 +336,7 @@ export default function Journal() {
 
     try {
       await supabase.from('journal_entries').update({ is_pinned: newStatus }).eq('id', id);
-    } catch (e) {}
+    } catch (e) { /* ignore */ }
   };
 
   const handleToggleFavorite = async (id: string) => {
@@ -348,7 +348,7 @@ export default function Journal() {
 
     try {
       await supabase.from('journal_entries').update({ is_favorite: newStatus }).eq('id', id);
-    } catch (e) {}
+    } catch (e) { /* ignore */ }
   };
 
   // Filtered & Grouped Data Computations
@@ -1046,6 +1046,18 @@ interface JournalPhotoLightboxProps {
 function JournalPhotoLightbox({ gallery, onClose }: JournalPhotoLightboxProps) {
   const [currentIndex, setCurrentIndex] = useState(gallery.index);
 
+  const nextPhoto = useCallback(() => {
+    if (currentIndex < gallery.photos.length - 1) {
+      setCurrentIndex((prev) => prev + 1);
+    }
+  }, [currentIndex, gallery.photos.length]);
+
+  const prevPhoto = useCallback(() => {
+    if (currentIndex > 0) {
+      setCurrentIndex((prev) => prev - 1);
+    }
+  }, [currentIndex]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -1054,19 +1066,7 @@ function JournalPhotoLightbox({ gallery, onClose }: JournalPhotoLightboxProps) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentIndex, gallery.photos.length]);
-
-  const nextPhoto = () => {
-    if (currentIndex < gallery.photos.length - 1) {
-      setCurrentIndex((prev) => prev + 1);
-    }
-  };
-
-  const prevPhoto = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex((prev) => prev - 1);
-    }
-  };
+  }, [nextPhoto, prevPhoto, onClose]);
 
   return (
     <div
@@ -1180,7 +1180,7 @@ function JournalComposerModal({ initialData, authors, onClose, onSave }: Journal
             setLocationName(p.locationName || '');
             setTagsInput(p.tags || '');
           }
-        } catch (e) {}
+        } catch (e) { /* ignore */ }
       }
     }
   }, [initialData, authors]);

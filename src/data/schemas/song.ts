@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BaseEntity, CoreTimestamps } from '../core/BaseEntity';
+import { CoreTimestamps } from '../core/BaseEntity';
 
 export const SongItemSchema = z.object({
   id: z.string().uuid().or(z.string().startsWith('local-')),

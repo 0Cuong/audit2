@@ -6,7 +6,7 @@ import { z } from 'zod';
 export type CreateJournalDTO = Omit<JournalEntryEntity, 'id' | 'created_at'>;
 export type UpdateJournalDTO = Partial<CreateJournalDTO>;
 
-export interface IJournalRepository extends BaseRepository<JournalEntryEntity, CreateJournalDTO, UpdateJournalDTO> {}
+export type IJournalRepository = BaseRepository<JournalEntryEntity, CreateJournalDTO, UpdateJournalDTO>;
 
 export class SupabaseJournalRepository implements IJournalRepository {
   private static readonly TABLE = 'journal_entries';
@@ -54,7 +54,7 @@ export class SupabaseJournalRepository implements IJournalRepository {
   }
 
   async create(data: CreateJournalDTO): Promise<JournalEntryEntity> {
-    const optimisticId = \`local-\${Date.now()}\`;
+    const optimisticId = `local-${Date.now()}`;
     const optimisticEntry: JournalEntryEntity = { ...data, id: optimisticId };
     
     const cached = this.getCachedData();

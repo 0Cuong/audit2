@@ -6,7 +6,7 @@ import { z } from 'zod';
 export type CreateSongDTO = Omit<SongItemEntity, 'id' | 'created_at'>;
 export type UpdateSongDTO = Partial<CreateSongDTO>;
 
-export interface ISongRepository extends BaseRepository<SongItemEntity, CreateSongDTO, UpdateSongDTO> {}
+export type ISongRepository = BaseRepository<SongItemEntity, CreateSongDTO, UpdateSongDTO>;
 
 export class SupabaseSongRepository implements ISongRepository {
   private static readonly TABLE = 'songs';
@@ -54,7 +54,7 @@ export class SupabaseSongRepository implements ISongRepository {
   }
 
   async create(data: CreateSongDTO): Promise<SongItemEntity> {
-    const optimisticId = \`local-\${Date.now()}\`;
+    const optimisticId = `local-${Date.now()}`;
     const optimisticEntry: SongItemEntity = { 
       ...data, 
       id: optimisticId,

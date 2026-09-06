@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode, useRef } from 'react';
 import {
   type AppearanceTheme,
@@ -135,15 +136,21 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
   const [identity, setIdentity] = useState<PersonalIdentity>(() => {
     const stored = safeGetStorage<any>('cuongisme_p_identity', DEFAULT_IDENTITY);
     if (stored && typeof stored === 'object') {
-      const clean = { ...stored };
+      const clean = { ...DEFAULT_IDENTITY, ...stored };
       delete clean.relationshipStart; // Migrated to CoupleProfile
       delete clean.partner1; // Migrated to CoupleProfile
       delete clean.partner2; // Migrated to CoupleProfile
       delete clean.brandName; // Use CoupleProfile names
       delete clean.tagline; // Let app manage this or empty string
+      if (!clean.partner1Avatar || clean.partner1Avatar.includes('590610904')) {
+        clean.partner1Avatar = '/mcuong.jpg';
+      }
+      if (!clean.partner2Avatar || clean.partner2Avatar.includes('605572670')) {
+        clean.partner2Avatar = '/xnghi.jpg';
+      }
       return clean as PersonalIdentity;
     }
-    return { id: 'p-id-1', primaryColor: 'amber' } as any; // Strip all personal defaults
+    return DEFAULT_IDENTITY;
   });
   const [workspaces, setWorkspaces] = useState<Workspace[]>(() =>
     safeGetStorage('cuongisme_p_workspaces', DEFAULT_WORKSPACES)

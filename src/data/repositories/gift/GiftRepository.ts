@@ -6,7 +6,7 @@ import { z } from 'zod';
 export type CreateGiftDTO = Omit<GiftItemEntity, 'id' | 'created_at'>;
 export type UpdateGiftDTO = Partial<CreateGiftDTO>;
 
-export interface IGiftRepository extends BaseRepository<GiftItemEntity, CreateGiftDTO, UpdateGiftDTO> {}
+export type IGiftRepository = BaseRepository<GiftItemEntity, CreateGiftDTO, UpdateGiftDTO>;
 
 export class SupabaseGiftRepository implements IGiftRepository {
   private static readonly TABLE = 'gifts';
@@ -54,7 +54,7 @@ export class SupabaseGiftRepository implements IGiftRepository {
   }
 
   async create(data: CreateGiftDTO): Promise<GiftItemEntity> {
-    const optimisticId = \`local-\${Date.now()}\`;
+    const optimisticId = `local-${Date.now()}`;
     const optimisticEntry: GiftItemEntity = { 
       ...data, 
       id: optimisticId,

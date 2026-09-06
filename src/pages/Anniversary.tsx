@@ -105,7 +105,7 @@ export default function AnniversaryCenter() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <AnimatePresence>
             {events.map((event, i) => {
-              const { daysLeft, isToday } = getDaysUntilAnniversary(event.date, event.type);
+              const { daysLeft, isToday } = getDaysUntilAnniversary(event.date, event.type as 'custom' | 'yearly' | 'monthly' | 'birthday');
               const isSoon = daysLeft <= 30;
 
               return (

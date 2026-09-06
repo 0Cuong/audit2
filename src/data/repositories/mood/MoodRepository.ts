@@ -6,7 +6,7 @@ import { z } from 'zod';
 export type CreateMoodDTO = Omit<MoodEntryEntity, 'id' | 'created_at'>;
 export type UpdateMoodDTO = Partial<CreateMoodDTO>;
 
-export interface IMoodRepository extends BaseRepository<MoodEntryEntity, CreateMoodDTO, UpdateMoodDTO> {}
+export type IMoodRepository = BaseRepository<MoodEntryEntity, CreateMoodDTO, UpdateMoodDTO>;
 
 export class SupabaseMoodRepository implements IMoodRepository {
   private static readonly TABLE = 'mood_entries';
@@ -54,7 +54,7 @@ export class SupabaseMoodRepository implements IMoodRepository {
   }
 
   async create(data: CreateMoodDTO): Promise<MoodEntryEntity> {
-    const optimisticId = \`local-\${Date.now()}\`;
+    const optimisticId = `local-${Date.now()}`;
     const optimisticEntry: MoodEntryEntity = { ...data, id: optimisticId };
     
     const cached = this.getCachedData();

@@ -88,7 +88,7 @@ export class SupabaseMemoryRepository implements IMemoryRepository {
 
   async create(data: CreateMemoryDTO): Promise<MemoryEntity> {
     // Generate an optimistic ID for local cache immediately
-    const optimisticId = \`local-\${Date.now()}\`;
+    const optimisticId = `local-${Date.now()}`;
     const optimisticMemory: MemoryEntity = { ...data, id: optimisticId };
     
     // Update local cache optimistically

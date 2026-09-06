@@ -78,19 +78,19 @@ const PALETTES = [
   { from: 'from-rose-600 via-orange-600 to-amber-950', glow: 'rgba(225, 29, 72, 0.35)', accent: '#e11d48', border: 'rgba(225, 29, 72, 0.4)' }
 ];
 
-export const getYoutubeId = (url: string): string | null => {
+const getYoutubeId = (url: string): string | null => {
   if (!url) return null;
   const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|shorts\/|watch\?.+&v=|live\/))([\w-]{11})/);
   return match ? match[1] : null;
 };
 
-export const getSpotifyId = (url: string): string | null => {
+const getSpotifyId = (url: string): string | null => {
   if (!url) return null;
   const match = url.match(/spotify\.com\/(?:intl-[a-z]+\/)?track\/([a-zA-Z0-9]+)/);
   return match ? match[1] : null;
 };
 
-export const detectUrlType = (url: string): 'youtube' | 'spotify' | 'audio' | 'unknown' => {
+const detectUrlType = (url: string): 'youtube' | 'spotify' | 'audio' | 'unknown' => {
   if (!url) return 'unknown';
   if (getYoutubeId(url)) return 'youtube';
   if (getSpotifyId(url)) return 'spotify';
@@ -104,7 +104,7 @@ export interface SongArtworkData {
   palette: typeof PALETTES[0];
 }
 
-export const getSongArtwork = (song: SongItem | null): SongArtworkData => {
+const getSongArtwork = (song: SongItem | null): SongArtworkData => {
   if (!song) {
     return {
       type: 'generated',
@@ -341,7 +341,7 @@ export default function MusicPage() {
         audioRef.current.pause();
       }
     }
-  }, [isPlaying, activeSong]);
+  }, [isPlaying, activeSong, volume]);
 
   // YouTube Player Control via postMessage API
   useEffect(() => {
@@ -474,16 +474,16 @@ export default function MusicPage() {
     }
   };
 
-  const handlePlaySong = (song: SongItem) => {
+  const handlePlaySong = useCallback((song: SongItem) => {
     setAudioError(null);
     if (activeSong?.id === song.id) {
-      setIsPlaying(!isPlaying);
+      setIsPlaying(prev => !prev);
     } else {
       setActiveSong(song);
       setIsPlaying(true);
       setCurrentTime(0);
     }
-  };
+  }, [activeSong?.id]);
 
   const handleSkip = useCallback((direction: 'next' | 'prev') => {
     if (filteredSongs.length === 0) return;
@@ -500,7 +500,7 @@ export default function MusicPage() {
     if (targetIndex >= filteredSongs.length) targetIndex = 0;
     if (targetIndex < 0) targetIndex = filteredSongs.length - 1;
     handlePlaySong(filteredSongs[targetIndex]);
-  }, [filteredSongs, activeSong]);
+  }, [filteredSongs, activeSong, handlePlaySong]);
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVol = parseFloat(e.target.value);

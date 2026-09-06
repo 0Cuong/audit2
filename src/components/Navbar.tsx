@@ -20,7 +20,6 @@ import {
   RotateCcw,
   X,
   ChevronDown,
-  Layers,
   Heart,
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
@@ -31,8 +30,8 @@ export default function Navbar() {
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  const { t, lang, setLang, profile } = useApp();
-  const { setIsStudioOpen, setIsAssetLibraryOpen } = usePersonalization();
+  const { lang, setLang, profile } = useApp();
+  const { setIsStudioOpen } = usePersonalization();
   const location = useLocation();
   const dropdownRef = useRef<HTMLDivElement>(null);
 

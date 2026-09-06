@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, MapPin, Trash2, Calendar, X, Heart, MessageSquare, Coffee, Plane, Star, Clock } from 'lucide-react';
+import { Plus, Trash2, Calendar, X, Heart, MessageSquare, Coffee, Plane, Star, Clock } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useTimeline } from '../data/domain/useTimeline';
 import { formatDateLocale } from '../lib/dateUtils';
@@ -35,7 +35,8 @@ export default function Timeline() {
         date: form.date,
         category: form.category,
         description: form.description,
-        icon: form.category
+        icon: form.category,
+        is_favorite: false
       });
       setShowAdd(false);
       setForm({

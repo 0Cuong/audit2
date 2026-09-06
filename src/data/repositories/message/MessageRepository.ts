@@ -6,7 +6,7 @@ import { z } from 'zod';
 export type CreateMessageDTO = Omit<MessageItemEntity, 'id' | 'created_at'>;
 export type UpdateMessageDTO = Partial<CreateMessageDTO>;
 
-export interface IMessageRepository extends BaseRepository<MessageItemEntity, CreateMessageDTO, UpdateMessageDTO> {}
+export type IMessageRepository = BaseRepository<MessageItemEntity, CreateMessageDTO, UpdateMessageDTO>;
 
 export class SupabaseMessageRepository implements IMessageRepository {
   private static readonly TABLE = 'messages';
@@ -54,7 +54,7 @@ export class SupabaseMessageRepository implements IMessageRepository {
   }
 
   async create(data: CreateMessageDTO): Promise<MessageItemEntity> {
-    const optimisticId = \`local-\${Date.now()}\`;
+    const optimisticId = `local-${Date.now()}`;
     const optimisticEntry: MessageItemEntity = { 
       ...data, 
       id: optimisticId,

@@ -7,15 +7,11 @@ import { parseDateInput } from '../../lib/dateUtils';
 export interface IntroExperienceProps {
   onComplete?: () => void;
   forceReplay?: boolean;
-  brandName?: string;
-  tagline?: string;
 }
 
 export default function IntroExperience({
   onComplete,
   forceReplay = false,
-  brandName = 'Cường & Nghi',
-  tagline = 'Không gian riêng tư của hai đứa',
 }: IntroExperienceProps) {
   const { profile } = useApp();
   const [step, setStep] = useState<number>(0);
@@ -167,7 +163,7 @@ export default function IntroExperience({
               >
                 <div className="aspect-[4/3] rounded-xl overflow-hidden bg-zinc-900 relative mb-2">
                   <img
-                    src="/590610904_1909263110009109_2160755825373491978_n.jpg"
+                    src="/mcuong.jpg"
                     alt="Khoảnh khắc đầu tiên"
                     className="w-full h-full object-cover"
                     loading="eager"
@@ -178,7 +174,7 @@ export default function IntroExperience({
                   </span>
                 </div>
                 <p className="text-[11px] text-zinc-400 font-light px-1 text-center line-clamp-1">
-                  {tagline}
+                  Không gian riêng tư của hai đứa
                 </p>
               </motion.div>
             )}

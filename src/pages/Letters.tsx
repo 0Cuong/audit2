@@ -8,7 +8,7 @@ import { LoveLetterEntity } from '../data/schemas/letter';
 
 export default function Letters() {
   const { t, tc, profile, lang } = useApp();
-  const { letters, addLetter } = useLetters();
+  const { letters, addLetter, deleteLetter: removeLetter } = useLetters();
   
   const [filter, setFilter] = useState<'all' | 'drafts' | 'scheduled' | 'locked'>('all');
   const [showWrite, setShowWrite] = useState(false);
@@ -74,18 +74,14 @@ export default function Letters() {
   const deleteLetter = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm('Bạn có chắc chắn muốn xóa lá thư này không?')) return;
-    const updated = letters.filter(l => l.id !== id);
-    setLetters(updated);
-    localStorage.setItem('cuongisme_letters', JSON.stringify(updated));
-
-    if (readingLetter?.id === id) {
-      setReadingLetter(null);
-    }
-
+    
     try {
-      await supabase.from('love_letters').delete().eq('id', id);
-    } catch (e) {
-      // Local
+      await removeLetter(id);
+      if (readingLetter?.id === id) {
+        setReadingLetter(null);
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 

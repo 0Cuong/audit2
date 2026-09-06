@@ -6,7 +6,7 @@ import { z } from 'zod';
 export type CreateAnniversaryDTO = Omit<AnniversaryEntity, 'id' | 'created_at'>;
 export type UpdateAnniversaryDTO = Partial<CreateAnniversaryDTO>;
 
-export interface IAnniversaryRepository extends BaseRepository<AnniversaryEntity, CreateAnniversaryDTO, UpdateAnniversaryDTO> {}
+export type IAnniversaryRepository = BaseRepository<AnniversaryEntity, CreateAnniversaryDTO, UpdateAnniversaryDTO>;
 
 export class SupabaseAnniversaryRepository implements IAnniversaryRepository {
   private static readonly TABLE = 'anniversaries';
@@ -54,7 +54,7 @@ export class SupabaseAnniversaryRepository implements IAnniversaryRepository {
   }
 
   async create(data: CreateAnniversaryDTO): Promise<AnniversaryEntity> {
-    const optimisticId = \`local-\${Date.now()}\`;
+    const optimisticId = `local-${Date.now()}`;
     const optimisticEntry: AnniversaryEntity = { ...data, id: optimisticId };
     
     const cached = this.getCachedData();

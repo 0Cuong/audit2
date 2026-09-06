@@ -15,12 +15,12 @@ export default function PhotoGalleryWidget({ block }: { block: WorkspaceBlock })
       : [
           {
             id: 'sample-1',
-            url: '/605572670_122215932062047100_7842864668271503382_n.jpg',
+            url: '/xuannghi.jpg',
             name: 'Nụ cười tỏa nắng',
           },
           {
             id: 'sample-2',
-            url: '/590610904_1909263110009109_2160755825373491978_n.jpg',
+            url: '/mcuong.jpg',
             name: 'Kỷ niệm chung',
           },
         ];

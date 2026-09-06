@@ -26,8 +26,9 @@ export default function MoodTracker() {
       await addMood({
         mood: moodKey,
         note: note.trim() || undefined,
-        partner: selectedPartner,
+        partner_id: selectedPartner,
         date: new Date().toISOString(),
+        intensity: 3
       });
       setNote('');
     } catch (err) {
@@ -157,7 +158,7 @@ export default function MoodTracker() {
 
             {entries.map((e, i) => {
               const currentMood = moods.find(m => m.key === e.mood) || moods[0];
-              const partnerName = e.partner === 'partner2' ? p2 : p1;
+              const partnerName = e.partner_id === 'partner2' ? p2 : p1;
 
               return (
                 <motion.div 

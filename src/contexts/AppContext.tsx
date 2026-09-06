@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { translations, type Lang } from '../i18n/translations';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
@@ -137,19 +138,32 @@ export const themeConfig: Record<ThemeId, {
   },
 };
 
-export const DEFAULT_PROFILE: CoupleProfile = {
-  id: 'default-profile',
-  partner1_name: 'Partner 1',
-  partner1_avatar: '',
-  partner1_gender: 'unspecified',
-  partner1_birthday: null,
-  partner2_name: 'Partner 2',
-  partner2_avatar: '',
-  partner2_gender: 'unspecified',
-  partner2_birthday: null,
-  relationship_status: 'dating',
-  relationship_start: '',
-};
+export function sanitizeCoupleProfile(raw?: Partial<CoupleProfile> | null): CoupleProfile {
+  const p1Avatar = !raw?.partner1_avatar || raw.partner1_avatar.includes('590610904')
+    ? '/mcuong.jpg'
+    : raw.partner1_avatar;
+  const p2Avatar = !raw?.partner2_avatar || raw.partner2_avatar.includes('605572670')
+    ? '/xnghi.jpg'
+    : raw.partner2_avatar;
+  const p1Name = !raw?.partner1_name || raw.partner1_name === 'Partner 1' ? 'Cường' : raw.partner1_name;
+  const p2Name = !raw?.partner2_name || raw.partner2_name === 'Partner 2' ? 'Nghi' : raw.partner2_name;
+
+  return {
+    id: raw?.id || 'default-profile',
+    partner1_name: p1Name,
+    partner1_avatar: p1Avatar,
+    partner1_gender: raw?.partner1_gender || 'male',
+    partner1_birthday: raw?.partner1_birthday ?? '2004-09-12',
+    partner2_name: p2Name,
+    partner2_avatar: p2Avatar,
+    partner2_gender: raw?.partner2_gender || 'female',
+    partner2_birthday: raw?.partner2_birthday ?? '2005-01-03',
+    relationship_status: raw?.relationship_status || 'dating',
+    relationship_start: raw?.relationship_start || '',
+  };
+}
+
+export const DEFAULT_PROFILE: CoupleProfile = sanitizeCoupleProfile();
 
 export const DEFAULT_SETTINGS: AppSettings = {
   id: 'default-settings',
@@ -195,7 +209,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   });
 
   const [profile, setProfileState] = useState<CoupleProfile>(() => {
-    return safeGetStorage<CoupleProfile>('cuongisme_profile', DEFAULT_PROFILE);
+    const raw = safeGetStorage<CoupleProfile>('cuongisme_profile', DEFAULT_PROFILE);
+    const sanitized = sanitizeCoupleProfile(raw);
+    safeSetStorage('cuongisme_profile', sanitized);
+    return sanitized;
   });
 
   const [settings, setSettingsState] = useState<AppSettings>(() => {
@@ -220,8 +237,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase.from('couple_profile').select('*').limit(1).maybeSingle();
       if (!error && data) {
-        setProfileState(data);
-        safeSetStorage('cuongisme_profile', data);
+        const sanitized = sanitizeCoupleProfile(data);
+        setProfileState(sanitized);
+        safeSetStorage('cuongisme_profile', sanitized);
       }
     } catch (error) {
       console.warn('[AppContext] Remote profile fetch failed, staying on local profile.');
@@ -376,7 +394,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const [profileRes, settingsRes] = result;
 
             if (profileRes.status === 'fulfilled' && profileRes.value?.data) {
-              const remoteProfile = profileRes.value.data as CoupleProfile;
+              const remoteProfile = sanitizeCoupleProfile(profileRes.value.data);
               setProfileState(remoteProfile);
               safeSetStorage('cuongisme_profile', remoteProfile);
             }

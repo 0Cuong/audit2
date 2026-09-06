@@ -32,8 +32,8 @@ export class IntroAssetLoader {
     this.register('font-mono', 'font', 'JetBrains Mono', 'OPTIONAL');
 
     // 2. Critical Partner Media
-    this.register('img-p1', 'image', '/590610904_1909263110009109_2160755825373491978_n.jpg', 'OPTIONAL');
-    this.register('img-p2', 'image', '/605572670_122215932062047100_7842864668271503382_n.jpg', 'OPTIONAL');
+    this.register('img-p1', 'image', '/mcuong.jpg', 'OPTIONAL');
+    this.register('img-p2', 'image', '/xuannghi.jpg', 'OPTIONAL');
   }
 
   public static register(id: string, type: 'font' | 'image' | 'data', src: string, priority: AssetPriority): void {

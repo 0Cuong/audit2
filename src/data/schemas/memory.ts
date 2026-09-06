@@ -23,7 +23,7 @@ export const MemorySchema = z.object({
   tags: z.array(z.string()).default([]),
   collection_ids: z.array(z.string()).default([]),
   location: LocationSchema.optional(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
   created_at: z.string().optional()
 });
 

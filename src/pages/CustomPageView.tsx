@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -250,7 +251,7 @@ document.getElementById('my-btn').onclick = () => {
 
 export function generateSandboxedHtml({ html, css, js, stateJson, pageKey }: CustomCodeModel & { pageKey: string }): string {
   let parsedState = {};
-  try { parsedState = JSON.parse(stateJson || '{}'); } catch (e) {}
+  try { parsedState = JSON.parse(stateJson || '{}'); } catch (e) { /* ignore */ }
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -366,7 +367,7 @@ export default function VisualCodeStudio({ storageKey = 'visual_code_studio' }: 
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) return JSON.parse(saved);
-    } catch (e) {}
+    } catch (e) { /* ignore */ }
     return APP_TEMPLATES[0].code;
   });
 
@@ -389,7 +390,7 @@ export default function VisualCodeStudio({ storageKey = 'visual_code_studio' }: 
   useEffect(() => {
     try {
       localStorage.setItem(storageKey, JSON.stringify(code));
-    } catch (e) {}
+    } catch (e) { /* ignore */ }
   }, [code, storageKey]);
 
   // Handle postMessage from Sandbox Iframe
@@ -448,6 +449,7 @@ export default function VisualCodeStudio({ storageKey = 'visual_code_studio' }: 
       stateJson: code.stateJson,
       pageKey: storageKey,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code, storageKey, compileCount]);
 
   const getViewportWidth = () => {
