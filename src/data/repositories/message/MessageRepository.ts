@@ -146,7 +146,9 @@ export class SupabaseMessageRepository implements IMessageRepository {
   private cacheData(data: MessageItemEntity[]): void {
     try {
       localStorage.setItem(SupabaseMessageRepository.STORAGE_KEY, JSON.stringify(data));
-    } catch {}
+    } catch {
+      // Storage quota or access blocked
+    }
   }
 }
 

@@ -409,7 +409,7 @@ const LetterCardContent: React.FC<{
       <div>
         <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400 dark:text-zinc-500 mb-2">
           <span>{date}</span>
-          <span className="font-serif italic">— Thư tay</span>
+          <span className="font-serif italic">(Thư tay)</span>
         </div>
 
         <h4 className="font-serif text-base font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight mb-2">
@@ -428,7 +428,7 @@ const LetterCardContent: React.FC<{
       <div className="mt-4 pt-3 border-t border-amber-950/5 dark:border-white/5 flex items-center justify-between text-[11px] font-serif italic text-zinc-500">
         <span>Ký tên</span>
         <span className="font-medium text-zinc-800 dark:text-zinc-200">
-          — {signature || authorName || 'Ẩn danh'}
+          - {signature || authorName || 'Ẩn danh'}
         </span>
       </div>
     </div>
@@ -1502,7 +1502,7 @@ const MemoryComposer: React.FC<MemoryComposerProps> = ({
           {/* Tags */}
           <div>
             <label className="block text-[11px] font-mono text-zinc-400 uppercase mb-1">
-              Thẻ (Tags) — Nhấn Enter để thêm
+              Thẻ (Tags) - Nhấn Enter để thêm
             </label>
             <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-xl bg-white/5 border border-white/10">
               {tags.map((t) => (

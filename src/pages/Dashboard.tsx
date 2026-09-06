@@ -20,49 +20,14 @@ import {
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { usePersonalization } from '../contexts/PersonalizationContext';
+import { useMemories } from '../data/domain/useMemories';
+import { useAnniversaries } from '../data/domain/useAnniversaries';
+import { useTimeline } from '../data/domain/useTimeline';
+import { useMoods } from '../data/domain/useMoods';
 import { calculateTimeTogether, getDaysUntilAnniversary, formatDateLocale, parseDateInput } from '../lib/dateUtils';
-import { safeGetStorage, safeSetStorage } from '../lib/storage';
 import BlockContainer from '../components/blocks/BlockContainer';
 import { renderWidget } from '../components/widgets/WidgetRegistry';
-
 import Avatar from '../components/ui/Avatar';
-
-interface MemoryItem {
-  id: string;
-  title: string;
-  description: string;
-  media_type: string;
-  url: string;
-  date: string;
-  is_favorite?: boolean;
-  location?: { name?: string };
-}
-
-interface AnniversaryEvent {
-  id: string;
-  title: string;
-  date: string;
-  anniversary_type: string;
-  recurrence?: string;
-  photo_url?: string | null;
-}
-
-interface TimelineEvent {
-  id: string;
-  title: string;
-  date: string;
-  event_type: string;
-  story?: string;
-  location?: string;
-}
-
-interface MoodEntry {
-  id: string;
-  mood: string;
-  note?: string;
-  partner?: string;
-  created_at: string;
-}
 
 const QUICK_MOODS = [
   { key: 'loved', emoji: '🥰', label: 'Yêu thương' },
@@ -74,6 +39,11 @@ const QUICK_MOODS = [
 export default function Dashboard() {
   const { profile, lang } = useApp();
   const { blocks, isEditMode, setIsEditMode, setIsStudioOpen } = usePersonalization();
+
+  const { memories } = useMemories();
+  const { anniversaries } = useAnniversaries();
+  const { events: timelineEvents } = useTimeline();
+  const { moods: moodEntries, addMood } = useMoods();
 
   const [showWidgetsSection, setShowWidgetsSection] = useState(false);
   const [selectedMoodKey, setSelectedMoodKey] = useState<string | null>(null);
@@ -107,20 +77,10 @@ export default function Dashboard() {
     return () => clearInterval(timer);
   }, [startDate]);
 
-  // Load real memories
-  const memories = useMemo(() => {
-    return safeGetStorage<MemoryItem[]>('cuongisme_memories_v2', []);
-  }, []);
-
   // Spotlight Memory: prioritized favorite or first photo
   const spotlightMemory = useMemo(() => {
-    return memories.find((m) => m.is_favorite && m.url) || memories[0] || null;
+    return memories.find((m) => m.is_favorite && m.url) || memories.find((m) => m.url) || memories[0] || null;
   }, [memories]);
-
-  // Load real upcoming anniversaries
-  const anniversaries = useMemo(() => {
-    return safeGetStorage<AnniversaryEvent[]>('cuongisme_anniversaries', []);
-  }, []);
 
   // Compute nearest milestone
   const nearestMilestone = useMemo(() => {
@@ -145,30 +105,20 @@ export default function Dashboard() {
     return nearest;
   }, [anniversaries]);
 
-  // Load real timeline events for visual chronology
-  const timelineEvents = useMemo(() => {
-    return safeGetStorage<TimelineEvent[]>('cuongisme_timeline', []);
-  }, []);
-
-  // Load mood entries
-  const [moodEntries, setMoodEntries] = useState<MoodEntry[]>(() => {
-    return safeGetStorage<MoodEntry[]>('cuongisme_moods', []);
-  });
-
   const latestMood = moodEntries[0] || null;
 
-  const handleQuickLogMood = (moodKey: string) => {
+  const handleQuickLogMood = async (moodKey: string) => {
     setSelectedMoodKey(moodKey);
-    const newEntry: MoodEntry = {
-      id: 'local-' + Date.now(),
-      mood: moodKey,
-      note: 'Ghi nhanh từ trang chủ',
-      partner: 'partner1',
-      created_at: new Date().toISOString(),
-    };
-    const updated = [newEntry, ...moodEntries];
-    setMoodEntries(updated);
-    safeSetStorage('cuongisme_moods', updated);
+    try {
+      await addMood({
+        mood: moodKey,
+        note: 'Ghi nhanh từ trang chủ',
+        date: new Date().toISOString(),
+        intensity: 4,
+      });
+    } catch {
+      // Handled in hook
+    }
   };
 
   return (
@@ -247,19 +197,19 @@ export default function Dashboard() {
             <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
               <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Năm bên nhau</span>
               <p className="font-serif text-2xl sm:text-3xl text-zinc-100 font-normal mt-1">
-                {startDate ? `${timeTogether.years} năm` : '—'}
+                {startDate ? `${timeTogether.years} năm` : '0 năm'}
               </p>
             </div>
             <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
               <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Tháng bên nhau</span>
               <p className="font-serif text-2xl sm:text-3xl text-zinc-100 font-normal mt-1">
-                {startDate ? `${timeTogether.months} tháng` : '—'}
+                {startDate ? `${timeTogether.months} tháng` : '0 tháng'}
               </p>
             </div>
             <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
               <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Tổng số ngày</span>
               <p className="font-serif text-2xl sm:text-3xl text-amber-300 font-normal mt-1">
-                {startDate ? `${timeTogether.totalDays} ngày` : '—'}
+                {startDate ? `${timeTogether.totalDays} ngày` : '0 ngày'}
               </p>
             </div>
             <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex flex-col justify-between">
@@ -556,7 +506,7 @@ export default function Dashboard() {
                 <Layers className="w-3.5 h-3.5" />
                 <span>Widget tùy biến ({blocks.length})</span>
                 <span className="text-[10px] text-zinc-500 font-sans">
-                  {showWidgetsSection ? '— Ẩn bớt' : '— Nhấn để mở'}
+                  {showWidgetsSection ? '(Ẩn bớt)' : '(Nhấn để mở)'}
                 </span>
               </button>
 

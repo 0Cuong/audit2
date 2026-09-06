@@ -142,7 +142,9 @@ export class SupabaseAnniversaryRepository implements IAnniversaryRepository {
   private cacheData(data: AnniversaryEntity[]): void {
     try {
       localStorage.setItem(SupabaseAnniversaryRepository.STORAGE_KEY, JSON.stringify(data));
-    } catch {}
+    } catch {
+      // Storage quota or access blocked
+    }
   }
 }
 

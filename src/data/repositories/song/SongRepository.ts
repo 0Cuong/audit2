@@ -146,7 +146,9 @@ export class SupabaseSongRepository implements ISongRepository {
   private cacheData(data: SongItemEntity[]): void {
     try {
       localStorage.setItem(SupabaseSongRepository.STORAGE_KEY, JSON.stringify(data));
-    } catch {}
+    } catch {
+      // Storage quota or access blocked
+    }
   }
 }
 

@@ -142,7 +142,9 @@ export class SupabaseJournalRepository implements IJournalRepository {
   private cacheData(data: JournalEntryEntity[]): void {
     try {
       localStorage.setItem(SupabaseJournalRepository.STORAGE_KEY, JSON.stringify(data));
-    } catch {}
+    } catch {
+      // Storage quota or access blocked
+    }
   }
 }
 

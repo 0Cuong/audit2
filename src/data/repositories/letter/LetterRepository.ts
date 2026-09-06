@@ -146,7 +146,9 @@ export class SupabaseLetterRepository implements ILetterRepository {
   private cacheData(data: LoveLetterEntity[]): void {
     try {
       localStorage.setItem(SupabaseLetterRepository.STORAGE_KEY, JSON.stringify(data));
-    } catch {}
+    } catch {
+      // Storage quota or access blocked
+    }
   }
 }
 

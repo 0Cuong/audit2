@@ -46,7 +46,7 @@ export default function DailyQuoteWidget({ block }: { block: WorkspaceBlock }) {
             "{current.text}"
           </p>
           <p className="text-right text-[11px] font-mono text-zinc-400 mt-2 font-semibold">
-            — {current.author}
+            - {current.author}
           </p>
         </div>
       </div>

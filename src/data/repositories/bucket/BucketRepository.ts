@@ -146,7 +146,9 @@ export class SupabaseBucketRepository implements IBucketRepository {
   private cacheData(data: BucketItemEntity[]): void {
     try {
       localStorage.setItem(SupabaseBucketRepository.STORAGE_KEY, JSON.stringify(data));
-    } catch {}
+    } catch {
+      // Storage quota or access blocked
+    }
   }
 }
 

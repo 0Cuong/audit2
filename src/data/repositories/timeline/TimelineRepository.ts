@@ -142,7 +142,9 @@ export class SupabaseTimelineRepository implements ITimelineRepository {
   private cacheData(data: TimelineEventEntity[]): void {
     try {
       localStorage.setItem(SupabaseTimelineRepository.STORAGE_KEY, JSON.stringify(data));
-    } catch {}
+    } catch {
+      // Storage quota or access blocked
+    }
   }
 }
 

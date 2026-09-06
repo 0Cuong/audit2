@@ -146,7 +146,9 @@ export class SupabaseGiftRepository implements IGiftRepository {
   private cacheData(data: GiftItemEntity[]): void {
     try {
       localStorage.setItem(SupabaseGiftRepository.STORAGE_KEY, JSON.stringify(data));
-    } catch {}
+    } catch {
+      // Storage quota or access blocked
+    }
   }
 }
 
