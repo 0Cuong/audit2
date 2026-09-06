@@ -122,7 +122,36 @@ const LOCAL_STORAGE_KEY = 'cuongisme_journal_v2';
 // ==========================================
 
 export default function Journal() {
-  const { t, lang } = useApp();
+  const { t, lang, profile } = useApp();
+
+  const p1Name = profile?.partner1_name || 'Partner 1';
+  const p2Name = profile?.partner2_name || 'Partner 2';
+
+  const authors: JournalAuthor[] = useMemo(() => [
+    { id: 'partner-1', name: p1Name, avatarInitial: p1Name.charAt(0).toUpperCase(), role: 'user' },
+    { id: 'partner-2', name: p2Name, avatarInitial: p2Name.charAt(0).toUpperCase(), role: 'partner' },
+  ], [p1Name, p2Name]);
+
+  const resolveAuthor = useCallback((item: any): { author_id: string; author_name: string } => {
+    if (item.author_id === 'partner-1' || item.author_id === 'author-1') {
+      return { author_id: 'partner-1', author_name: item.author_name || p1Name };
+    }
+    if (item.author_id === 'partner-2' || item.author_id === 'author-2') {
+      return { author_id: 'partner-2', author_name: item.author_name || p2Name };
+    }
+    const rawName = (item.author_name || item.author || '').trim();
+    if (rawName) {
+      if (rawName.toLowerCase() === p1Name.toLowerCase()) {
+        return { author_id: 'partner-1', author_name: p1Name };
+      }
+      if (rawName.toLowerCase() === p2Name.toLowerCase()) {
+        return { author_id: 'partner-2', author_name: p2Name };
+      }
+      return { author_id: item.author_id || 'custom', author_name: rawName };
+    }
+    // Explicit neutral identity for unassigned/legacy records
+    return { author_id: 'shared', author_name: 'Kỷ niệm chung' };
+  }, [p1Name, p2Name]);
 
   // Primary State
   const [entries, setEntries] = useState<JournalEntry[]>(() => {
@@ -168,26 +197,29 @@ export default function Journal() {
         if (error) throw error;
 
         if (data && data.length > 0 && isMounted) {
-          // Normalize Supabase entries to support rich client model safely
-          const normalized = data.map((item: any) => ({
-            id: item.id || `remote-${Date.now()}`,
-            author_id: item.author_id || (item.author === 'Em' ? 'author-2' : 'author-1'),
-            author_name: item.author_name || item.author || (item.author_id === 'author-2' ? 'Em' : 'Minh'),
-            type: (item.type as JournalEntryType) || 'note',
-            title: item.title || '',
-            content: item.content || '',
-            mood: item.mood || 'peaceful',
-            date: item.date || new Date().toISOString().split('T')[0],
-            time: item.time || (item.created_at ? new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '12:00'),
-            created_at: item.created_at || new Date().toISOString(),
-            updated_at: item.updated_at,
-            photos: Array.isArray(item.photos) ? item.photos : [],
-            tags: Array.isArray(item.tags) ? item.tags : [],
-            location: item.location || (item.location_name ? { name: item.location_name } : undefined),
-            is_pinned: Boolean(item.is_pinned),
-            is_favorite: Boolean(item.is_favorite),
-            metadata: item.metadata || {},
-          }));
+          // Normalize Supabase entries to support rich client model with deterministic identity
+          const normalized = data.map((item: any) => {
+            const authorInfo = resolveAuthor(item);
+            return {
+              id: item.id || `remote-${Date.now()}`,
+              author_id: authorInfo.author_id,
+              author_name: authorInfo.author_name,
+              type: (item.type as JournalEntryType) || 'note',
+              title: item.title || '',
+              content: item.content || '',
+              mood: item.mood || 'peaceful',
+              date: item.date || new Date().toISOString().split('T')[0],
+              time: item.time || (item.created_at ? new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '12:00'),
+              created_at: item.created_at || new Date().toISOString(),
+              updated_at: item.updated_at,
+              photos: Array.isArray(item.photos) ? item.photos : [],
+              tags: Array.isArray(item.tags) ? item.tags : [],
+              location: item.location || (item.location_name ? { name: item.location_name } : undefined),
+              is_pinned: Boolean(item.is_pinned),
+              is_favorite: Boolean(item.is_favorite),
+              metadata: item.metadata || {},
+            };
+          });
 
           setEntries(normalized);
           localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalized));
@@ -215,7 +247,7 @@ export default function Journal() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [resolveAuthor]);
 
   // Save changes to localStorage whenever entries update
   const persistEntries = (newEntries: JournalEntry[]) => {
@@ -591,7 +623,7 @@ export default function Journal() {
               <div className="w-[1px] h-4 bg-zinc-200 dark:bg-zinc-800 shrink-0 mx-1" />
 
               {/* Author toggles */}
-              {DEFAULT_AUTHORS.map((author) => (
+              {authors.map((author) => (
                 <button
                   key={author.id}
                   type="button"
@@ -694,7 +726,7 @@ export default function Journal() {
         {isComposerOpen && (
           <JournalComposerModal
             initialData={editingEntry}
-            authors={DEFAULT_AUTHORS}
+            authors={authors}
             onClose={() => {
               setIsComposerOpen(false);
               setEditingEntry(null);
@@ -789,7 +821,7 @@ function JournalEntryCard({
           {/* Author Badge */}
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-900 dark:text-zinc-100">
             <span className="w-5 h-5 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center text-[10px] font-bold uppercase">
-              {entry.author_name ? entry.author_name.charAt(0) : 'M'}
+              {entry.author_name ? entry.author_name.charAt(0) : '?'}
             </span>
             <span>{entry.author_name}</span>
           </span>
