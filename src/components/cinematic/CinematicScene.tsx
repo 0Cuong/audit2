@@ -8,29 +8,29 @@ interface CinematicSceneProps {
 
 const variantsMap: Record<string, Variants> = {
   dash: {
-    initial: { opacity: 0, scale: 0.98, filter: 'blur(4px)' },
-    animate: { opacity: 1, scale: 1, filter: 'blur(0px)' },
-    exit: { opacity: 0, scale: 1.02, filter: 'blur(2px)' },
+    initial: { opacity: 0, y: 8 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -6 },
   },
   memories: {
-    initial: { opacity: 0, x: 20 },
+    initial: { opacity: 0, x: 12 },
     animate: { opacity: 1, x: 0 },
-    exit: { opacity: 0, x: -20 },
+    exit: { opacity: 0, x: -12 },
   },
   timeline: {
-    initial: { opacity: 0, y: 40 },
+    initial: { opacity: 0, y: 16 },
     animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -40 },
+    exit: { opacity: 0, y: -16 },
   },
   letters: {
-    initial: { opacity: 0, y: 20, rotateX: -10 },
-    animate: { opacity: 1, y: 0, rotateX: 0 },
-    exit: { opacity: 0, y: -20, rotateX: 10 },
+    initial: { opacity: 0, y: 12 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -12 },
   },
   default: {
-    initial: { opacity: 0, y: 12, scale: 0.995 },
-    animate: { opacity: 1, y: 0, scale: 1 },
-    exit: { opacity: 0, y: -12, scale: 0.995 },
+    initial: { opacity: 0, y: 10 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -10 },
   },
   reduced: {
     initial: { opacity: 0 },

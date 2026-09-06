@@ -9,11 +9,12 @@ import CommandPalette from './components/ui/CommandPalette';
 import ScrollProgress from './components/ui/ScrollProgress';
 import IntroExperience from './components/intro/IntroExperience';
 import ErrorBoundary from './components/ErrorBoundary';
-import AppearanceStudioModal from './components/studio/AppearanceStudioModal';
-import AssetLibraryModal from './components/assets/AssetLibraryModal';
 import CinematicWorldEngine from './components/cinematic/CinematicWorldEngine';
 import CinematicScene from './components/cinematic/CinematicScene';
 import { useState } from 'react';
+
+const AppearanceStudioModal = lazy(() => import('./components/studio/AppearanceStudioModal'));
+const AssetLibraryModal = lazy(() => import('./components/assets/AssetLibraryModal'));
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Timeline = lazy(() => import('./pages/Timeline'));
@@ -135,8 +136,10 @@ function ThemedApp() {
       <Footer />
 
       {/* Global Modals */}
-      <AppearanceStudioModal />
-      <AssetLibraryModal />
+      <Suspense fallback={null}>
+        <AppearanceStudioModal />
+        <AssetLibraryModal />
+      </Suspense>
 
       {/* Cinematic Opening Sequence Experience ("The World Is Being Assembled") */}
       {showIntro && (
