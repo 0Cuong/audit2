@@ -1,4 +1,4 @@
-import { supabase } from '../../../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../../../lib/supabase';
 import { MemoryEntity, MemorySchema } from '../../schemas/memory';
 import { BaseRepository } from '../core/BaseRepository';
 import { z } from 'zod';
@@ -16,6 +16,10 @@ export class SupabaseMemoryRepository implements IMemoryRepository {
   private static readonly STORAGE_KEY = 'cuongisme_memories_v2';
 
   async findAll(): Promise<MemoryEntity[]> {
+    if (!isSupabaseConfigured) {
+      return this.getCachedData();
+    }
+
     try {
       const { data, error } = await supabase
         .from(SupabaseMemoryRepository.TABLE)
@@ -32,12 +36,17 @@ export class SupabaseMemoryRepository implements IMemoryRepository {
       }
       return data as MemoryEntity[];
     } catch (e) {
-      console.error('Failed to fetch memories from Supabase, falling back to cache:', e);
+      console.warn('Supabase memory fetch failed, using local cache:', e);
       return this.getCachedData();
     }
   }
 
   async findById(id: string): Promise<MemoryEntity | null> {
+    if (!isSupabaseConfigured) {
+      const cached = this.getCachedData();
+      return cached.find(m => m.id === id) || null;
+    }
+
     try {
       const { data, error } = await supabase
         .from(SupabaseMemoryRepository.TABLE)
@@ -57,6 +66,10 @@ export class SupabaseMemoryRepository implements IMemoryRepository {
   }
 
   async findByCollection(collectionId: string): Promise<MemoryEntity[]> {
+    if (!isSupabaseConfigured) {
+      return this.getCachedData().filter(m => m.collection_ids?.includes(collectionId));
+    }
+
     try {
       const { data, error } = await supabase
         .from(SupabaseMemoryRepository.TABLE)
@@ -72,6 +85,10 @@ export class SupabaseMemoryRepository implements IMemoryRepository {
   }
 
   async findFavorites(): Promise<MemoryEntity[]> {
+    if (!isSupabaseConfigured) {
+      return this.getCachedData().filter(m => m.is_favorite);
+    }
+
     try {
       const { data, error } = await supabase
         .from(SupabaseMemoryRepository.TABLE)
@@ -94,6 +111,10 @@ export class SupabaseMemoryRepository implements IMemoryRepository {
     // Update local cache optimistically
     const cached = this.getCachedData();
     this.cacheData([optimisticMemory, ...cached]);
+
+    if (!isSupabaseConfigured) {
+      return optimisticMemory;
+    }
 
     try {
       const { data: created, error } = await supabase
@@ -125,6 +146,11 @@ export class SupabaseMemoryRepository implements IMemoryRepository {
       this.cacheData([...cached]);
     }
 
+    if (!isSupabaseConfigured) {
+      if (optimisticData) return optimisticData;
+      throw new Error('Memory not found in local cache or server');
+    }
+
     try {
       const { data: updated, error } = await supabase
         .from(SupabaseMemoryRepository.TABLE)
@@ -152,6 +178,10 @@ export class SupabaseMemoryRepository implements IMemoryRepository {
   async delete(id: string): Promise<void> {
     const cached = this.getCachedData();
     this.cacheData(cached.filter(m => m.id !== id));
+
+    if (!isSupabaseConfigured) {
+      return;
+    }
 
     try {
       const { error } = await supabase

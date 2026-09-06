@@ -1,4 +1,4 @@
-import { supabase } from '../../../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../../../lib/supabase';
 import { LoveLetterEntity, LetterSchema } from '../../schemas/letter';
 import { BaseRepository } from '../core/BaseRepository';
 import { z } from 'zod';
@@ -13,6 +13,10 @@ export class SupabaseLetterRepository implements ILetterRepository {
   private static readonly STORAGE_KEY = 'cuongisme_letters_v2';
 
   async findAll(): Promise<LoveLetterEntity[]> {
+    if (!isSupabaseConfigured) {
+      return this.getCachedData();
+    }
+
     try {
       const { data, error } = await supabase
         .from(SupabaseLetterRepository.TABLE)
@@ -29,12 +33,17 @@ export class SupabaseLetterRepository implements ILetterRepository {
       }
       return data as LoveLetterEntity[];
     } catch (e) {
-      console.error('Failed to fetch letters from Supabase, falling back to cache:', e);
+      console.warn('Supabase letter fetch failed, using local cache:', e);
       return this.getCachedData();
     }
   }
 
   async findById(id: string): Promise<LoveLetterEntity | null> {
+    if (!isSupabaseConfigured) {
+      const cached = this.getCachedData();
+      return cached.find(m => m.id === id) || null;
+    }
+
     try {
       const { data, error } = await supabase
         .from(SupabaseLetterRepository.TABLE)
@@ -64,6 +73,10 @@ export class SupabaseLetterRepository implements ILetterRepository {
     const cached = this.getCachedData();
     this.cacheData([optimisticEntry, ...cached]);
 
+    if (!isSupabaseConfigured) {
+      return optimisticEntry;
+    }
+
     try {
       const { data: created, error } = await supabase
         .from(SupabaseLetterRepository.TABLE)
@@ -92,6 +105,11 @@ export class SupabaseLetterRepository implements ILetterRepository {
       this.cacheData([...cached]);
     }
 
+    if (!isSupabaseConfigured) {
+      if (optimisticData) return optimisticData;
+      throw new Error('Letter entry not found');
+    }
+
     try {
       const { data: updated, error } = await supabase
         .from(SupabaseLetterRepository.TABLE)
@@ -117,6 +135,10 @@ export class SupabaseLetterRepository implements ILetterRepository {
   async delete(id: string): Promise<void> {
     const cached = this.getCachedData();
     this.cacheData(cached.filter(m => m.id !== id));
+
+    if (!isSupabaseConfigured) {
+      return;
+    }
 
     try {
       const { error } = await supabase

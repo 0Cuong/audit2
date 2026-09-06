@@ -87,12 +87,6 @@ interface JournalDraft {
   updated_at: string;
 }
 
-// Default Authors Configuration
-const DEFAULT_AUTHORS: JournalAuthor[] = [
-  { id: 'author-1', name: 'Partner 1', avatarInitial: 'P', role: 'user' },
-  { id: 'author-2', name: 'Partner 2', avatarInitial: 'P', role: 'partner' },
-];
-
 const ENTRY_TYPES: { id: JournalEntryType; label: string; icon: React.ReactNode }[] = [
   { id: 'memory', label: 'Kỷ niệm', icon: <Sparkles className="w-3.5 h-3.5" /> },
   { id: 'note', label: 'Nhật ký', icon: <FileText className="w-3.5 h-3.5" /> },

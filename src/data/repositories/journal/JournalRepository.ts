@@ -1,4 +1,4 @@
-import { supabase } from '../../../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../../../lib/supabase';
 import { JournalEntryEntity, JournalEntrySchema } from '../../schemas/journal';
 import { BaseRepository } from '../core/BaseRepository';
 import { z } from 'zod';
@@ -13,6 +13,10 @@ export class SupabaseJournalRepository implements IJournalRepository {
   private static readonly STORAGE_KEY = 'cuongisme_journal_v2';
 
   async findAll(): Promise<JournalEntryEntity[]> {
+    if (!isSupabaseConfigured) {
+      return this.getCachedData();
+    }
+
     try {
       const { data, error } = await supabase
         .from(SupabaseJournalRepository.TABLE)
@@ -29,12 +33,17 @@ export class SupabaseJournalRepository implements IJournalRepository {
       }
       return data as JournalEntryEntity[];
     } catch (e) {
-      console.error('Failed to fetch journals from Supabase, falling back to cache:', e);
+      console.warn('Supabase journal fetch failed, using local cache:', e);
       return this.getCachedData();
     }
   }
 
   async findById(id: string): Promise<JournalEntryEntity | null> {
+    if (!isSupabaseConfigured) {
+      const cached = this.getCachedData();
+      return cached.find(m => m.id === id) || null;
+    }
+
     try {
       const { data, error } = await supabase
         .from(SupabaseJournalRepository.TABLE)
@@ -55,10 +64,18 @@ export class SupabaseJournalRepository implements IJournalRepository {
 
   async create(data: CreateJournalDTO): Promise<JournalEntryEntity> {
     const optimisticId = `local-${Date.now()}`;
-    const optimisticEntry: JournalEntryEntity = { ...data, id: optimisticId };
+    const optimisticEntry: JournalEntryEntity = {
+      ...data,
+      id: optimisticId,
+      created_at: (data as any).created_at || new Date().toISOString(),
+    };
     
     const cached = this.getCachedData();
     this.cacheData([optimisticEntry, ...cached]);
+
+    if (!isSupabaseConfigured) {
+      return optimisticEntry;
+    }
 
     try {
       const { data: created, error } = await supabase
@@ -88,6 +105,11 @@ export class SupabaseJournalRepository implements IJournalRepository {
       this.cacheData([...cached]);
     }
 
+    if (!isSupabaseConfigured) {
+      if (optimisticData) return optimisticData;
+      throw new Error('Journal entry not found');
+    }
+
     try {
       const { data: updated, error } = await supabase
         .from(SupabaseJournalRepository.TABLE)
@@ -113,6 +135,10 @@ export class SupabaseJournalRepository implements IJournalRepository {
   async delete(id: string): Promise<void> {
     const cached = this.getCachedData();
     this.cacheData(cached.filter(m => m.id !== id));
+
+    if (!isSupabaseConfigured) {
+      return;
+    }
 
     try {
       const { error } = await supabase

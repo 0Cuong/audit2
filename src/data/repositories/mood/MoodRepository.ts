@@ -1,9 +1,19 @@
-import { supabase } from '../../../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../../../lib/supabase';
 import { MoodEntryEntity, MoodEntrySchema } from '../../schemas/mood';
 import { BaseRepository } from '../core/BaseRepository';
 import { z } from 'zod';
 
-export type CreateMoodDTO = Omit<MoodEntryEntity, 'id' | 'created_at'>;
+export type CreateMoodDTO = {
+  mood: string;
+  note?: string;
+  date?: string;
+  partner_id?: string;
+  partner_name?: string;
+  intensity?: number;
+  couple_id?: string;
+  created_at?: string;
+  partner?: string;
+};
 export type UpdateMoodDTO = Partial<CreateMoodDTO>;
 
 export type IMoodRepository = BaseRepository<MoodEntryEntity, CreateMoodDTO, UpdateMoodDTO>;
@@ -13,6 +23,10 @@ export class SupabaseMoodRepository implements IMoodRepository {
   private static readonly STORAGE_KEY = 'cuongisme_moods_v2';
 
   async findAll(): Promise<MoodEntryEntity[]> {
+    if (!isSupabaseConfigured) {
+      return this.getCachedData();
+    }
+
     try {
       const { data, error } = await supabase
         .from(SupabaseMoodRepository.TABLE)
@@ -29,12 +43,17 @@ export class SupabaseMoodRepository implements IMoodRepository {
       }
       return data as MoodEntryEntity[];
     } catch (e) {
-      console.error('Failed to fetch moods from Supabase, falling back to cache:', e);
+      console.warn('Supabase mood fetch failed, using local cache:', e);
       return this.getCachedData();
     }
   }
 
   async findById(id: string): Promise<MoodEntryEntity | null> {
+    if (!isSupabaseConfigured) {
+      const cached = this.getCachedData();
+      return cached.find(m => m.id === id) || null;
+    }
+
     try {
       const { data, error } = await supabase
         .from(SupabaseMoodRepository.TABLE)
@@ -69,6 +88,10 @@ export class SupabaseMoodRepository implements IMoodRepository {
     
     const cached = this.getCachedData();
     this.cacheData([optimisticEntry, ...cached]);
+
+    if (!isSupabaseConfigured) {
+      return optimisticEntry;
+    }
 
     try {
       const supabasePayload: Record<string, any> = {
@@ -107,6 +130,11 @@ export class SupabaseMoodRepository implements IMoodRepository {
       this.cacheData([...cached]);
     }
 
+    if (!isSupabaseConfigured) {
+      if (optimisticData) return optimisticData;
+      throw new Error('Mood entry not found');
+    }
+
     try {
       const supabasePayload: Record<string, any> = {};
       if (data.mood !== undefined) supabasePayload.mood = data.mood;
@@ -140,6 +168,10 @@ export class SupabaseMoodRepository implements IMoodRepository {
   async delete(id: string): Promise<void> {
     const cached = this.getCachedData();
     this.cacheData(cached.filter(m => m.id !== id));
+
+    if (!isSupabaseConfigured) {
+      return;
+    }
 
     try {
       const { error } = await supabase

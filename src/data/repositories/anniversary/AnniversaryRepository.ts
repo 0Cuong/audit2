@@ -1,4 +1,4 @@
-import { supabase } from '../../../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../../../lib/supabase';
 import { AnniversaryEntity, AnniversarySchema } from '../../schemas/anniversary';
 import { BaseRepository } from '../core/BaseRepository';
 import { z } from 'zod';
@@ -13,6 +13,10 @@ export class SupabaseAnniversaryRepository implements IAnniversaryRepository {
   private static readonly STORAGE_KEY = 'cuongisme_anniversaries_v2';
 
   async findAll(): Promise<AnniversaryEntity[]> {
+    if (!isSupabaseConfigured) {
+      return this.getCachedData();
+    }
+
     try {
       const { data, error } = await supabase
         .from(SupabaseAnniversaryRepository.TABLE)
@@ -29,12 +33,17 @@ export class SupabaseAnniversaryRepository implements IAnniversaryRepository {
       }
       return data as AnniversaryEntity[];
     } catch (e) {
-      console.error('Failed to fetch anniversaries from Supabase, falling back to cache:', e);
+      console.warn('Supabase anniversary fetch failed, using local cache:', e);
       return this.getCachedData();
     }
   }
 
   async findById(id: string): Promise<AnniversaryEntity | null> {
+    if (!isSupabaseConfigured) {
+      const cached = this.getCachedData();
+      return cached.find(m => m.id === id) || null;
+    }
+
     try {
       const { data, error } = await supabase
         .from(SupabaseAnniversaryRepository.TABLE)
@@ -59,6 +68,10 @@ export class SupabaseAnniversaryRepository implements IAnniversaryRepository {
     
     const cached = this.getCachedData();
     this.cacheData([...cached, optimisticEntry]);
+
+    if (!isSupabaseConfigured) {
+      return optimisticEntry;
+    }
 
     try {
       const { data: created, error } = await supabase
@@ -88,6 +101,11 @@ export class SupabaseAnniversaryRepository implements IAnniversaryRepository {
       this.cacheData([...cached]);
     }
 
+    if (!isSupabaseConfigured) {
+      if (optimisticData) return optimisticData;
+      throw new Error('Anniversary not found');
+    }
+
     try {
       const { data: updated, error } = await supabase
         .from(SupabaseAnniversaryRepository.TABLE)
@@ -113,6 +131,10 @@ export class SupabaseAnniversaryRepository implements IAnniversaryRepository {
   async delete(id: string): Promise<void> {
     const cached = this.getCachedData();
     this.cacheData(cached.filter(m => m.id !== id));
+
+    if (!isSupabaseConfigured) {
+      return;
+    }
 
     try {
       const { error } = await supabase

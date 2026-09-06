@@ -25,7 +25,7 @@ export default function MoodTracker() {
     try {
       await addMood({
         mood: moodKey,
-        note: note.trim() || undefined,
+        note: note.trim() || '',
         partner_id: selectedPartner,
         date: new Date().toISOString(),
         intensity: 3

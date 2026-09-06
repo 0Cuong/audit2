@@ -93,7 +93,7 @@ export default function Dashboard() {
     };
 
     for (const event of anniversaries) {
-      const res = getDaysUntilAnniversary(event.date, (event.recurrence as any) || 'yearly');
+      const res = getDaysUntilAnniversary(event.date, ((event as any).recurrence as any) || 'yearly');
       if (res.daysLeft < nearest.daysLeft) {
         nearest = {
           event,
@@ -324,10 +324,10 @@ export default function Dashboard() {
                     <span className="text-amber-300/90 font-medium">
                       {formatDateLocale(event.date, lang)}
                     </span>
-                    {event.location && (
+                    {(event as any).location && (
                       <>
                         <span>·</span>
-                        <span className="text-zinc-500">{event.location}</span>
+                        <span className="text-zinc-500">{(event as any).location}</span>
                       </>
                     )}
                   </div>
@@ -336,9 +336,9 @@ export default function Dashboard() {
                     {event.title}
                   </h3>
 
-                  {event.story && (
+                  {((event as any).story || (event as any).description) && (
                     <p className="text-xs sm:text-sm text-zinc-400 font-light leading-relaxed max-w-2xl">
-                      {event.story}
+                      {(event as any).story || (event as any).description}
                     </p>
                   )}
                 </div>
