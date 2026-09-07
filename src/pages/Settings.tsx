@@ -206,6 +206,7 @@ export default function SettingsPage() {
     try {
       if (settings?.id && settings.id !== 'default-settings') {
         await supabase.from('settings').update({ contact_links: contactLinks }).eq('id', settings.id);
+        apiGovernance.invalidate('app_settings');
         await refreshSettings();
       } else {
         localStorage.setItem('cuongisme_settings', JSON.stringify({ ...settings, contact_links: contactLinks }));
@@ -257,6 +258,7 @@ export default function SettingsPage() {
       const updatedMode = !settings?.privacy_mode;
       if (settings?.id && settings.id !== 'default-settings') {
         await supabase.from('settings').update({ privacy_mode: updatedMode }).eq('id', settings.id);
+        apiGovernance.invalidate('app_settings');
         await refreshSettings();
       } else {
         localStorage.setItem('cuongisme_settings', JSON.stringify({ ...settings, privacy_mode: updatedMode }));
@@ -273,6 +275,7 @@ export default function SettingsPage() {
     try {
       if (settings?.id && settings.id !== 'default-settings') {
         await supabase.from('settings').update({ privacy_password: privacyPassword }).eq('id', settings.id);
+        apiGovernance.invalidate('app_settings');
         await refreshSettings();
       } else {
         localStorage.setItem('cuongisme_settings', JSON.stringify({ ...settings, privacy_password: privacyPassword }));

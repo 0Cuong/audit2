@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Target, CheckCircle2, Circle } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { bucketRepository } from '../../data/repositories/bucket/BucketRepository';
 import { useApp } from '../../contexts/AppContext';
 import { type WorkspaceBlock } from '../../types/personalization';
 
@@ -12,12 +12,8 @@ export default function GoalTrackerWidget({ block }: { block: WorkspaceBlock }) 
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await supabase
-          .from('bucket_list_items')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(6);
-        if (data) setItems(data);
+        const data = await bucketRepository.findAll();
+        if (data) setItems(data.slice(0, 6));
       } catch (e) {
         // Local fallback
       }

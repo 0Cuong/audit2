@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from '../../../lib/supabase';
+import { apiGovernance } from '../../../lib/api-governance';
 import { AnniversaryEntity, AnniversarySchema } from '../../schemas/anniversary';
 import { BaseRepository } from '../core/BaseRepository';
 import { z } from 'zod';
@@ -18,12 +19,19 @@ export class SupabaseAnniversaryRepository implements IAnniversaryRepository {
     }
 
     try {
-      const { data, error } = await supabase
+      const data = await apiGovernance.fetchWithGovernance<any[]>(
+        'repo_anniversary_all',
+        async () => {
+          const { data: resData, error } = await supabase
         .from(SupabaseAnniversaryRepository.TABLE)
         .select('*')
         .order('date', { ascending: true });
-
       if (error) throw error;
+              return resData || [];
+        },
+        { ttl: 300000 }
+      );
+
       if (!data) return [];
 
       const parsed = z.array(AnniversarySchema).safeParse(data);
@@ -50,8 +58,8 @@ export class SupabaseAnniversaryRepository implements IAnniversaryRepository {
         .select('*')
         .eq('id', id)
         .single();
-        
       if (error) throw error;
+        
       if (!data) return null;
       
       const parsed = AnniversarySchema.safeParse(data);
@@ -79,8 +87,9 @@ export class SupabaseAnniversaryRepository implements IAnniversaryRepository {
         .insert(data)
         .select()
         .single();
-
       if (error) throw error;
+      apiGovernance.invalidate('repo_anniversary_all');
+
       
       const parsed = AnniversarySchema.parse(created);
       this.cacheData([...cached, parsed]);
@@ -113,8 +122,9 @@ export class SupabaseAnniversaryRepository implements IAnniversaryRepository {
         .eq('id', id)
         .select()
         .single();
-
       if (error) throw error;
+      apiGovernance.invalidate('repo_anniversary_all');
+
       const parsed = AnniversarySchema.parse(updated);
       
       if (existingIndex >= 0) {
@@ -141,8 +151,9 @@ export class SupabaseAnniversaryRepository implements IAnniversaryRepository {
         .from(SupabaseAnniversaryRepository.TABLE)
         .delete()
         .eq('id', id);
-
       if (error) throw error;
+      apiGovernance.invalidate('repo_anniversary_all');
+
     } catch (e) {
       console.warn('Failed to delete from Supabase, deleted locally only', e);
     }

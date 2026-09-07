@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { supabase } from '../lib/supabase';
+import { apiGovernance } from '../lib/api-governance';
 import { formatDateLocale } from '../lib/dateUtils';
 
 /* ==========================================================================
@@ -1747,19 +1748,15 @@ export default function Memories() {
   // Sync with Supabase on mount
   const fetchSupabaseMemories = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('memories')
-        .select('*')
-        .order('date', { ascending: false });
-
-      if (!error && data && data.length > 0) {
+      const data = await memoryRepository.findAll();
+      if (data && data.length > 0) {
         const normalized: MemoryItem[] = data.map((d: any) => ({
           ...d,
           media_type: d.media_type || d.category || 'photo',
           tags: Array.isArray(d.tags) ? d.tags : []
         }));
         setMemories(normalized);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+        // localStorage is already handled by repository
       }
     } catch (e) {
       console.warn('[Supabase] Falling back to offline memory storage');
@@ -1786,7 +1783,7 @@ export default function Memories() {
     persistMemories(updated);
 
     try {
-      await supabase.from('memories').update({ is_favorite: newVal }).eq('id', id);
+      await memoryRepository.update(id, { is_favorite: newVal });
     } catch (err) {
       // Local fallback handled
     }
@@ -1802,7 +1799,7 @@ export default function Memories() {
     persistMemories(updated);
 
     try {
-      await supabase.from('memories').update({ is_pinned: newVal }).eq('id', id);
+      await memoryRepository.update(id, { is_pinned: newVal });
     } catch (err) {
       // Local fallback
     }
@@ -1818,7 +1815,7 @@ export default function Memories() {
     if (viewerMemory?.id === id) setViewerMemory(null);
 
     try {
-      await supabase.from('memories').delete().eq('id', id);
+      await memoryRepository.delete(id);
     } catch (err) {
       // Local fallback
     }

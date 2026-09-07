@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from '../../../lib/supabase';
+import { apiGovernance } from '../../../lib/api-governance';
 import { JournalEntryEntity, JournalEntrySchema } from '../../schemas/journal';
 import { BaseRepository } from '../core/BaseRepository';
 import { z } from 'zod';
@@ -18,12 +19,19 @@ export class SupabaseJournalRepository implements IJournalRepository {
     }
 
     try {
-      const { data, error } = await supabase
+      const data = await apiGovernance.fetchWithGovernance<any[]>(
+        'repo_journal_all',
+        async () => {
+          const { data: resData, error } = await supabase
         .from(SupabaseJournalRepository.TABLE)
         .select('*')
         .order('date', { ascending: false });
-
       if (error) throw error;
+              return resData || [];
+        },
+        { ttl: 300000 }
+      );
+
       if (!data) return [];
 
       const parsed = z.array(JournalEntrySchema).safeParse(data);
@@ -50,8 +58,8 @@ export class SupabaseJournalRepository implements IJournalRepository {
         .select('*')
         .eq('id', id)
         .single();
-        
       if (error) throw error;
+        
       if (!data) return null;
       
       const parsed = JournalEntrySchema.safeParse(data);
@@ -83,8 +91,9 @@ export class SupabaseJournalRepository implements IJournalRepository {
         .insert(data)
         .select()
         .single();
-
       if (error) throw error;
+      apiGovernance.invalidate('repo_journal_all');
+
       
       const parsed = JournalEntrySchema.parse(created);
       this.cacheData([parsed, ...cached]);
@@ -117,8 +126,9 @@ export class SupabaseJournalRepository implements IJournalRepository {
         .eq('id', id)
         .select()
         .single();
-
       if (error) throw error;
+      apiGovernance.invalidate('repo_journal_all');
+
       const parsed = JournalEntrySchema.parse(updated);
       
       if (existingIndex >= 0) {
@@ -145,8 +155,9 @@ export class SupabaseJournalRepository implements IJournalRepository {
         .from(SupabaseJournalRepository.TABLE)
         .delete()
         .eq('id', id);
-
       if (error) throw error;
+      apiGovernance.invalidate('repo_journal_all');
+
     } catch (e) {
       console.warn('Failed to delete from Supabase, deleted locally only', e);
     }

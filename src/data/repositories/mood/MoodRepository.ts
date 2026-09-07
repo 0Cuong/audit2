@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from '../../../lib/supabase';
+import { apiGovernance } from '../../../lib/api-governance';
 import { MoodEntryEntity, MoodEntrySchema } from '../../schemas/mood';
 import { BaseRepository } from '../core/BaseRepository';
 import { z } from 'zod';
@@ -28,12 +29,19 @@ export class SupabaseMoodRepository implements IMoodRepository {
     }
 
     try {
-      const { data, error } = await supabase
+      const data = await apiGovernance.fetchWithGovernance<any[]>(
+        'repo_mood_all',
+        async () => {
+          const { data: resData, error } = await supabase
         .from(SupabaseMoodRepository.TABLE)
         .select('*')
         .order('created_at', { ascending: false });
-
       if (error) throw error;
+              return resData || [];
+        },
+        { ttl: 300000 }
+      );
+
       if (!data) return [];
 
       const parsed = z.array(MoodEntrySchema).safeParse(data);
@@ -60,8 +68,8 @@ export class SupabaseMoodRepository implements IMoodRepository {
         .select('*')
         .eq('id', id)
         .single();
-        
       if (error) throw error;
+        
       if (!data) return null;
       
       const parsed = MoodEntrySchema.safeParse(data);
@@ -108,8 +116,9 @@ export class SupabaseMoodRepository implements IMoodRepository {
         .insert(supabasePayload)
         .select()
         .single();
-
       if (error) throw error;
+      apiGovernance.invalidate('repo_mood_all');
+
       
       const parsed = MoodEntrySchema.parse(created);
       this.cacheData([parsed, ...cached.filter(m => m.id !== optimisticId)]);
@@ -150,8 +159,9 @@ export class SupabaseMoodRepository implements IMoodRepository {
         .eq('id', id)
         .select()
         .single();
-
       if (error) throw error;
+      apiGovernance.invalidate('repo_mood_all');
+
       const parsed = MoodEntrySchema.parse(updated);
       
       if (existingIndex >= 0) {
@@ -178,8 +188,9 @@ export class SupabaseMoodRepository implements IMoodRepository {
         .from(SupabaseMoodRepository.TABLE)
         .delete()
         .eq('id', id);
-
       if (error) throw error;
+      apiGovernance.invalidate('repo_mood_all');
+
     } catch (e) {
       console.warn('Failed to delete from Supabase, deleted locally only', e);
     }

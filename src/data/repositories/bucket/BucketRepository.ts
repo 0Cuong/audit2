@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from '../../../lib/supabase';
+import { apiGovernance } from '../../../lib/api-governance';
 import { BucketItemEntity, BucketItemSchema } from '../../schemas/bucket';
 import { BaseRepository } from '../core/BaseRepository';
 import { z } from 'zod';
@@ -18,12 +19,19 @@ export class SupabaseBucketRepository implements IBucketRepository {
     }
 
     try {
-      const { data, error } = await supabase
+      const data = await apiGovernance.fetchWithGovernance<any[]>(
+        'repo_bucket_all',
+        async () => {
+          const { data: resData, error } = await supabase
         .from(SupabaseBucketRepository.TABLE)
         .select('*')
         .order('created_at', { ascending: false });
-
       if (error) throw error;
+              return resData || [];
+        },
+        { ttl: 300000 }
+      );
+
       if (!data) return [];
 
       const parsed = z.array(BucketItemSchema).safeParse(data);
@@ -50,8 +58,8 @@ export class SupabaseBucketRepository implements IBucketRepository {
         .select('*')
         .eq('id', id)
         .single();
-        
       if (error) throw error;
+        
       if (!data) return null;
       
       const parsed = BucketItemSchema.safeParse(data);
@@ -83,8 +91,9 @@ export class SupabaseBucketRepository implements IBucketRepository {
         .insert(data)
         .select()
         .single();
-
       if (error) throw error;
+      apiGovernance.invalidate('repo_bucket_all');
+
       
       const parsed = BucketItemSchema.parse(created);
       this.cacheData([parsed, ...cached]);
@@ -117,8 +126,9 @@ export class SupabaseBucketRepository implements IBucketRepository {
         .eq('id', id)
         .select()
         .single();
-
       if (error) throw error;
+      apiGovernance.invalidate('repo_bucket_all');
+
       const parsed = BucketItemSchema.parse(updated);
       
       if (existingIndex >= 0) {
@@ -145,8 +155,9 @@ export class SupabaseBucketRepository implements IBucketRepository {
         .from(SupabaseBucketRepository.TABLE)
         .delete()
         .eq('id', id);
-
       if (error) throw error;
+      apiGovernance.invalidate('repo_bucket_all');
+
     } catch (e) {
       console.warn('Failed to delete from Supabase, deleted locally only', e);
     }

@@ -2,6 +2,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { translations, type Lang } from '../i18n/translations';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { apiGovernance } from '../lib/api-governance';
 import { safeGetStorage, safeSetStorage } from '../lib/storage';
 
 // --- Types ---
@@ -235,8 +236,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const refreshProfile = useCallback(async () => {
     if (!isSupabaseConfigured) return;
     try {
-      const { data, error } = await supabase.from('couple_profile').select('*').limit(1).maybeSingle();
-      if (!error && data) {
+      const data = await apiGovernance.fetchWithGovernance(
+        'app_couple_profile',
+        async () => {
+          const { data: res, error } = await supabase.from('couple_profile').select('*').limit(1).maybeSingle();
+          if (error) throw error;
+          return res;
+        },
+        { ttl: 300000 }
+      );
+      if (data) {
         const sanitized = sanitizeCoupleProfile(data);
         setProfileState(sanitized);
         safeSetStorage('cuongisme_profile', sanitized);
@@ -249,8 +258,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const refreshSettings = useCallback(async () => {
     if (!isSupabaseConfigured) return;
     try {
-      const { data, error } = await supabase.from('settings').select('*').limit(1).maybeSingle();
-      if (!error && data) {
+      const data = await apiGovernance.fetchWithGovernance(
+        'app_settings',
+        async () => {
+          const { data: res, error } = await supabase.from('settings').select('*').limit(1).maybeSingle();
+          if (error) throw error;
+          return res;
+        },
+        { ttl: 300000 }
+      );
+      if (data) {
         setSettingsState(data as AppSettings);
         safeSetStorage('cuongisme_settings', data);
         if (data.language) {
@@ -350,6 +367,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (remoteRecord) {
         setProfileState(remoteRecord);
         safeSetStorage('cuongisme_profile', remoteRecord);
+        apiGovernance.invalidate('app_couple_profile');
       }
 
       return { success: true, error: null };
@@ -383,9 +401,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (isSupabaseConfigured) {
           // Wrap remote queries with a strict timeout so network stalls can never hang initialization
           const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 2000));
+          
           const fetchPromise = Promise.allSettled([
-            supabase.from('couple_profile').select('*').limit(1).maybeSingle(),
-            supabase.from('settings').select('*').limit(1).maybeSingle()
+            apiGovernance.fetchWithGovernance('app_couple_profile', async () => {
+              const { data, error } = await supabase.from('couple_profile').select('*').limit(1).maybeSingle();
+              if (error) throw error;
+              return data;
+            }, { ttl: 300000 }),
+            apiGovernance.fetchWithGovernance('app_settings', async () => {
+              const { data, error } = await supabase.from('settings').select('*').limit(1).maybeSingle();
+              if (error) throw error;
+              return data;
+            }, { ttl: 300000 })
           ]);
 
           const result = await Promise.race([fetchPromise, timeoutPromise]) as PromiseSettledResult<any>[] | undefined;
@@ -393,14 +420,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (active && Array.isArray(result)) {
             const [profileRes, settingsRes] = result;
 
-            if (profileRes.status === 'fulfilled' && profileRes.value?.data) {
-              const remoteProfile = sanitizeCoupleProfile(profileRes.value.data);
+            if (profileRes.status === 'fulfilled' && profileRes.value) {
+              const remoteProfile = sanitizeCoupleProfile(profileRes.value);
               setProfileState(remoteProfile);
               safeSetStorage('cuongisme_profile', remoteProfile);
             }
 
-            if (settingsRes.status === 'fulfilled' && settingsRes.value?.data) {
-              const remoteSettings = settingsRes.value.data as AppSettings;
+            if (settingsRes.status === 'fulfilled' && settingsRes.value) {
+              const remoteSettings = settingsRes.value as AppSettings;
               setSettingsState(remoteSettings);
               safeSetStorage('cuongisme_settings', remoteSettings);
               if (remoteSettings.language) {
@@ -445,6 +472,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (isSupabaseConfigured && settings?.id && settings.id !== DEFAULT_SETTINGS.id) {
       try {
         await supabase.from('settings').update({ language: l }).eq('id', settings.id);
+        apiGovernance.invalidate('app_settings');
       } catch (e) {
         // Silent catch for local mode
       }
@@ -457,6 +485,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (isSupabaseConfigured && settings?.id && settings.id !== DEFAULT_SETTINGS.id) {
       try {
         await supabase.from('settings').update({ theme: th }).eq('id', settings.id);
+        apiGovernance.invalidate('app_settings');
       } catch (e) {
         // Silent catch for local mode
       }

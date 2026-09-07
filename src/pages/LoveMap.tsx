@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { apiGovernance } from '../lib/api-governance';
 import { safeGetStorage, safeSetStorage } from '../lib/storage';
 
 export type LocationType = 'where_met' | 'date' | 'trip' | 'special' | 'future';
@@ -127,18 +128,21 @@ export default function LoveMap() {
 
     (async () => {
       try {
-        const { data, error } = await supabase
-          .from('map_locations')
-          .select('*')
-          .order('created_at', { ascending: false });
+        const data = await apiGovernance.fetchWithGovernance<any[]>(
+          'repo_map_locations_all',
+          async () => {
+            const { data: resData, error } = await supabase
+              .from('map_locations')
+              .select('*')
+              .order('created_at', { ascending: false });
+            if (error) throw error;
+          apiGovernance.invalidate('repo_map_locations_all');
+            return resData || [];
+          },
+          { ttl: 300000 }
+        );
 
         if (!isMounted) return;
-
-        if (error) {
-          console.error('[LoveMap] Không thể tải từ Supabase:', error);
-          setStatusMessage({ type: 'info', text: 'Đang hiển thị dữ liệu lưu cục bộ trên thiết bị.' });
-          return;
-        }
 
         if (data) {
           setLocations(data);
@@ -153,6 +157,7 @@ export default function LoveMap() {
       } catch (err) {
         if (!isMounted) return;
         console.error('[LoveMap] Ngoại lệ kết nối máy chủ:', err);
+        setStatusMessage({ type: 'info', text: 'Đang hiển thị dữ liệu lưu cục bộ trên thiết bị.' });
       }
     })();
 
@@ -203,8 +208,8 @@ export default function LoveMap() {
   };
 
   // Tìm kiếm địa điểm an toàn (Debounced + Abort Request)
-  const executeSearch = useCallback((query: string) => {
-    const trimmed = query.trim();
+  const executeSearch = useCallback(async (query: string) => {
+    const trimmed = query.trim().replace(/\s+/g, ' ').toLowerCase();
     if (!trimmed || trimmed.length < 2) {
       setSearchResults([]);
       setSearchError(null);
@@ -221,31 +226,60 @@ export default function LoveMap() {
     setIsSearching(true);
     setSearchError(null);
 
-    fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(trimmed)}&limit=5&addressdetails=1`,
-      {
-        signal: abortController.signal,
-        headers: { 'Accept-Language': 'vi,en;q=0.9' },
-      }
-    )
-      .then((res) => {
-        if (!res.ok) throw new Error('Không thể kết nối đến máy chủ tìm kiếm địa điểm.');
-        return res.json();
-      })
-      .then((data: GeocodingResult[]) => {
-        setIsSearching(false);
-        if (!Array.isArray(data) || data.length === 0) {
-          setSearchResults([]);
-          setSearchError('Không tìm thấy kết quả phù hợp. Bạn hãy thử nhập tọa độ hoặc dùng GPS.');
-        } else {
-          setSearchResults(data);
+    const cacheKey = `nominatim_${trimmed}`;
+
+    try {
+      const data = await apiGovernance.fetchWithGovernance<GeocodingResult[]>(
+        cacheKey,
+        async (signal) => {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(trimmed)}&limit=5&addressdetails=1`,
+            {
+              signal, // use the governance signal
+              headers: { 
+                'Accept-Language': 'vi,en;q=0.9',
+                // required by nominatim policy:
+                'User-Agent': 'PersonalOS/1.0 (Audit)' 
+              },
+            }
+          );
+          if (!res.ok) {
+            if (res.status === 429) {
+              const err = new Error('Rate limit exceeded');
+              (err as any).status = 429;
+              throw err;
+            }
+            throw new Error('Lỗi máy chủ tìm kiếm.');
+          }
+          return res.json();
+        },
+        {
+          minSpacing: 1000,
+          concurrency: 1,
+          ttl: 24 * 60 * 60 * 1000, // cache for 24h
+          retries: 2,
         }
-      })
-      .catch((err: Error) => {
-        if (err.name === 'AbortError') return;
-        setIsSearching(false);
-        setSearchError('Lỗi mạng khi tìm kiếm. Bạn có thể chuyển sang tab Nhập tọa độ hoặc GPS.');
-      });
+      );
+
+      // Check if we've been superseded by a newer search
+      if (searchAbortControllerRef.current !== abortController) {
+        return;
+      }
+
+      setIsSearching(false);
+      if (!Array.isArray(data) || data.length === 0) {
+        setSearchResults([]);
+        setSearchError('Không tìm thấy kết quả phù hợp. Bạn hãy thử nhập tọa độ hoặc dùng GPS.');
+      } else {
+        setSearchResults(data);
+      }
+    } catch (err: any) {
+      if (searchAbortControllerRef.current !== abortController) return;
+      if (err.name === 'AbortError') return;
+      
+      setIsSearching(false);
+      setSearchError('Lỗi mạng khi tìm kiếm. Bạn có thể chuyển sang tab Nhập tọa độ hoặc GPS.');
+    }
   }, []);
 
   const handleSearchInputChange = (val: string) => {
@@ -253,7 +287,7 @@ export default function LoveMap() {
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     searchTimeoutRef.current = setTimeout(() => {
       executeSearch(val);
-    }, 400);
+    }, 900);
   };
 
   const handleSelectSearchResult = (item: GeocodingResult) => {
@@ -528,6 +562,8 @@ export default function LoveMap() {
     if (isSupabaseConfigured) {
       try {
         const { error } = await supabase.from('map_locations').delete().eq('id', id);
+        apiGovernance.invalidate('repo_map_locations_all');
+        if (!error) { apiGovernance.invalidate('repo_map_locations_all'); }
         if (error) {
           // Rollback nếu máy chủ báo lỗi
           console.error('[LoveMap] Lỗi khi xóa trên máy chủ:', error);

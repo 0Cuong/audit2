@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Calendar, ChevronRight, Clock, Plus } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { anniversaryRepository } from '../../data/repositories/anniversary/AnniversaryRepository';
 import { getDaysUntilAnniversary, formatDateLocale } from '../../lib/dateUtils';
 import { useApp } from '../../contexts/AppContext';
 import { type WorkspaceBlock } from '../../types/personalization';
@@ -13,12 +13,12 @@ export default function AnniversaryWidget({ block }: { block: WorkspaceBlock }) 
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await supabase
-          .from('anniversaries')
-          .select('*')
-          .order('date')
-          .limit(4);
-        if (data && data.length > 0) setEvents(data);
+        const data = await anniversaryRepository.findAll();
+        if (data && data.length > 0) {
+          // Sort ascending locally
+          const sorted = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+          setEvents(sorted.slice(0, 4));
+        }
       } catch (e) {
         // Local fallback
       }

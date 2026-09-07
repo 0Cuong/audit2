@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Image as ImageIcon, ChevronRight, Plus } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { memoryRepository } from '../../data/repositories/memory/MemoryRepository';
 import { useApp } from '../../contexts/AppContext';
 import { type WorkspaceBlock } from '../../types/personalization';
 
@@ -12,12 +12,8 @@ export default function MemoriesWidget({ block }: { block: WorkspaceBlock }) {
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await supabase
-          .from('memories')
-          .select('*')
-          .order('date', { ascending: false })
-          .limit(4);
-        if (data && data.length > 0) setMemories(data);
+        const data = await memoryRepository.findAll();
+        if (data && data.length > 0) setMemories(data.slice(0, 4));
       } catch (e) {
         // Local fallback
       }

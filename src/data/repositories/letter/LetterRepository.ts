@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from '../../../lib/supabase';
+import { apiGovernance } from '../../../lib/api-governance';
 import { LoveLetterEntity, LetterSchema } from '../../schemas/letter';
 import { BaseRepository } from '../core/BaseRepository';
 import { z } from 'zod';
@@ -18,12 +19,19 @@ export class SupabaseLetterRepository implements ILetterRepository {
     }
 
     try {
-      const { data, error } = await supabase
+      const data = await apiGovernance.fetchWithGovernance<any[]>(
+        'repo_letter_all',
+        async () => {
+          const { data: resData, error } = await supabase
         .from(SupabaseLetterRepository.TABLE)
         .select('*')
         .order('created_at', { ascending: false });
-
       if (error) throw error;
+              return resData || [];
+        },
+        { ttl: 300000 }
+      );
+
       if (!data) return [];
 
       const parsed = z.array(LetterSchema).safeParse(data);
@@ -50,8 +58,8 @@ export class SupabaseLetterRepository implements ILetterRepository {
         .select('*')
         .eq('id', id)
         .single();
-        
       if (error) throw error;
+        
       if (!data) return null;
       
       const parsed = LetterSchema.safeParse(data);
@@ -83,8 +91,9 @@ export class SupabaseLetterRepository implements ILetterRepository {
         .insert(data)
         .select()
         .single();
-
       if (error) throw error;
+      apiGovernance.invalidate('repo_letter_all');
+
       
       const parsed = LetterSchema.parse(created);
       this.cacheData([parsed, ...cached]);
@@ -117,8 +126,9 @@ export class SupabaseLetterRepository implements ILetterRepository {
         .eq('id', id)
         .select()
         .single();
-
       if (error) throw error;
+      apiGovernance.invalidate('repo_letter_all');
+
       const parsed = LetterSchema.parse(updated);
       
       if (existingIndex >= 0) {
@@ -145,8 +155,9 @@ export class SupabaseLetterRepository implements ILetterRepository {
         .from(SupabaseLetterRepository.TABLE)
         .delete()
         .eq('id', id);
-
       if (error) throw error;
+      apiGovernance.invalidate('repo_letter_all');
+
     } catch (e) {
       console.warn('Failed to delete from Supabase, deleted locally only', e);
     }

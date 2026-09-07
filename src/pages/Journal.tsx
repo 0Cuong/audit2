@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { supabase } from '../lib/supabase';
+import { apiGovernance } from '../lib/api-governance';
 import { formatDateLocale } from '../lib/dateUtils';
 
 // ==========================================
@@ -183,12 +184,18 @@ export default function Journal() {
     let isMounted = true;
     const fetchRemoteEntries = async () => {
       try {
-        const { data, error } = await supabase
-          .from('journal_entries')
-          .select('*')
-          .order('date', { ascending: false });
-
-        if (error) throw error;
+        const data = await apiGovernance.fetchWithGovernance<any[]>(
+          'repo_journal_all',
+          async () => {
+            const { data: resData, error } = await supabase
+              .from('journal_entries')
+              .select('*')
+              .order('date', { ascending: false });
+            if (error) throw error;
+            return resData || [];
+          },
+          { ttl: 300000 }
+        );
 
         if (data && data.length > 0 && isMounted) {
           // Normalize Supabase entries to support rich client model with deterministic identity
@@ -347,7 +354,7 @@ export default function Journal() {
     persistEntries(updated);
 
     try {
-      await supabase.from('journal_entries').delete().eq('id', id);
+      await journalRepository.delete(id);
     } catch (e) {
       // offline safe
     }
@@ -361,7 +368,7 @@ export default function Journal() {
     persistEntries(updated);
 
     try {
-      await supabase.from('journal_entries').update({ is_pinned: newStatus }).eq('id', id);
+      await journalRepository.update(id, { is_pinned: newStatus });
     } catch (e) { /* ignore */ }
   };
 
@@ -373,7 +380,7 @@ export default function Journal() {
     persistEntries(updated);
 
     try {
-      await supabase.from('journal_entries').update({ is_favorite: newStatus }).eq('id', id);
+      await journalRepository.update(id, { is_favorite: newStatus });
     } catch (e) { /* ignore */ }
   };
 

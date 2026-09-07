@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { MapPin, Navigation, ExternalLink } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { apiGovernance } from '../../lib/api-governance';
 import { type WorkspaceBlock } from '../../types/personalization';
 
 export default function LoveMapWidget({ block }: { block: WorkspaceBlock }) {
@@ -11,13 +12,20 @@ export default function LoveMapWidget({ block }: { block: WorkspaceBlock }) {
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await supabase
-          .from('map_locations')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(5);
+        const data = await apiGovernance.fetchWithGovernance<any[]>(
+          'repo_map_locations_all',
+          async () => {
+            const { data: resData, error } = await supabase
+              .from('map_locations')
+              .select('*')
+              .order('created_at', { ascending: false });
+            if (error) throw error;
+            return resData || [];
+          },
+          { ttl: 300000 }
+        );
         if (data && data.length > 0) {
-          setLocations(data);
+          setLocations(data.slice(0, 5));
           setActiveLoc(data[0]);
         }
       } catch (e) {

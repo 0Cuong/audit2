@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Smile } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { moodRepository } from '../../data/repositories/mood/MoodRepository';
 import { useApp } from '../../contexts/AppContext';
 import { type WorkspaceBlock } from '../../types/personalization';
 
@@ -12,12 +12,8 @@ export default function MoodSummaryWidget({ block }: { block: WorkspaceBlock }) 
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await supabase
-          .from('mood_entries')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(6);
-        if (data) setMoods(data);
+        const data = await moodRepository.findAll();
+        if (data) setMoods(data.slice(0, 6));
       } catch (e) {
         // Local fallback
       }

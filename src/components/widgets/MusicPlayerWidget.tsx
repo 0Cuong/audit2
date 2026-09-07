@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Music, Play, Pause, SkipForward } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { songRepository } from '../../data/repositories/song/SongRepository';
 import { type WorkspaceBlock } from '../../types/personalization';
 
 interface SongItem {
@@ -22,12 +22,8 @@ export default function MusicPlayerWidget({ block }: { block: WorkspaceBlock }) 
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await supabase
-          .from('songs')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(10);
-        if (data && data.length > 0) setSongs(data);
+        const data = await songRepository.findAll();
+        if (data && data.length > 0) setSongs(data.slice(0, 10));
       } catch (e) {
         // Local fallback
       }

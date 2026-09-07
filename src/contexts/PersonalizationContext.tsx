@@ -269,6 +269,7 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
             },
             { onConflict: 'id' }
           );
+          apiGovernance.invalidate('app_user_personalization');
         } catch (e) {
           // Local fallback
         }
@@ -300,11 +301,20 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
     }
     (async () => {
       try {
-        const { data, error } = await supabase
-          .from('user_personalization')
-          .select('*')
-          .limit(1)
-          .maybeSingle();
+        const data = await apiGovernance.fetchWithGovernance<any>(
+          'app_user_personalization',
+          async () => {
+            const { data: resData, error } = await supabase
+              .from('user_personalization')
+              .select('*')
+              .limit(1)
+              .maybeSingle();
+            if (error) throw error;
+            return resData;
+          },
+          { ttl: 300000 }
+        );
+        const error = null; // for backward compatibility in the following if-check
 
         if (!error && data) {
           if (data.appearance) setAppearance(data.appearance);

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { MessageSquare, Pin, Plus } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { messageRepository } from '../../data/repositories/message/MessageRepository';
 import { useApp } from '../../contexts/AppContext';
 import { type WorkspaceBlock } from '../../types/personalization';
 
@@ -13,12 +13,8 @@ export default function HubNotesWidget({ block }: { block: WorkspaceBlock }) {
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await supabase
-          .from('messages')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(6);
-        if (data && data.length > 0) setMessages(data);
+        const data = await messageRepository.findAll();
+        if (data && data.length > 0) setMessages(data.slice(0, 6));
       } catch (e) {
         // Local fallback
       }
@@ -38,11 +34,12 @@ export default function HubNotesWidget({ block }: { block: WorkspaceBlock }) {
     setInputNote('');
 
     try {
-      await supabase.from('messages').insert({
+      await messageRepository.create({
         content: newNote.content,
         message_type: 'note',
         is_pinned: true,
-      });
+        author_id: 'partner1', // Fallback, would be better to have real author
+      } as any);
     } catch (e) {
       // Local fallback
     }

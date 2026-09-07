@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from '../../../lib/supabase';
+import { apiGovernance } from '../../../lib/api-governance';
 import { TimelineEventEntity, TimelineEventSchema } from '../../schemas/timeline';
 import { BaseRepository } from '../core/BaseRepository';
 import { z } from 'zod';
@@ -18,12 +19,19 @@ export class SupabaseTimelineRepository implements ITimelineRepository {
     }
 
     try {
-      const { data, error } = await supabase
-        .from(SupabaseTimelineRepository.TABLE)
-        .select('*')
-        .order('date', { ascending: false });
-
+      const data = await apiGovernance.fetchWithGovernance<any[]>(
+        'repo_timeline_all',
+        async () => {
+          const { data: resData, error } = await supabase
+            .from(SupabaseTimelineRepository.TABLE)
+            .select('*')
+            .order('date', { ascending: false });
       if (error) throw error;
+              return resData || [];
+        },
+        { ttl: 300000 }
+      );
+
       if (!data) return [];
 
       const parsed = z.array(TimelineEventSchema).safeParse(data);
@@ -50,8 +58,8 @@ export class SupabaseTimelineRepository implements ITimelineRepository {
         .select('*')
         .eq('id', id)
         .single();
-        
       if (error) throw error;
+        
       if (!data) return null;
       
       const parsed = TimelineEventSchema.safeParse(data);
@@ -79,8 +87,9 @@ export class SupabaseTimelineRepository implements ITimelineRepository {
         .insert(data)
         .select()
         .single();
-
       if (error) throw error;
+      apiGovernance.invalidate('repo_timeline_all');
+
       
       const parsed = TimelineEventSchema.parse(created);
       this.cacheData([parsed, ...cached]);
@@ -113,8 +122,9 @@ export class SupabaseTimelineRepository implements ITimelineRepository {
         .eq('id', id)
         .select()
         .single();
-
       if (error) throw error;
+      apiGovernance.invalidate('repo_timeline_all');
+
       const parsed = TimelineEventSchema.parse(updated);
       
       if (existingIndex >= 0) {
@@ -141,8 +151,9 @@ export class SupabaseTimelineRepository implements ITimelineRepository {
         .from(SupabaseTimelineRepository.TABLE)
         .delete()
         .eq('id', id);
-
       if (error) throw error;
+      apiGovernance.invalidate('repo_timeline_all');
+
     } catch (e) {
       console.warn('Failed to delete from Supabase, deleted locally only', e);
     }

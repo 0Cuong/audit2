@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { supabase } from '../lib/supabase';
+import { apiGovernance } from '../lib/api-governance';
 
 // ============================================================================
 // 1. DATA TYPES & DEFAULT DATA (Strictly Preserved Schema)
@@ -312,20 +313,21 @@ export default function MusicPage() {
 
   // Load latest data from Supabase
   useEffect(() => {
-    supabase
-      .from('songs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => { 
-        if (!error && data && Array.isArray(data) && data.length > 0) {
-          setSongs(data); 
-          try {
-            localStorage.setItem('cuongisme_songs', JSON.stringify(data));
-          } catch {
-            // Storage quota handled safely
-          }
+    let isMounted = true;
+    songRepository.findAll().then((data) => {
+      if (isMounted && data && data.length > 0) {
+        setSongs(data);
+        try {
+          localStorage.setItem('cuongisme_songs', JSON.stringify(data));
+        } catch {
+          // Storage quota handled safely
         }
-      });
+      }
+    }).catch(e => {
+      console.warn('Supabase music fetch failed:', e);
+    });
+
+    return () => { isMounted = false; };
   }, []);
 
   // HTML5 Audio Playback Control
@@ -411,7 +413,7 @@ export default function MusicPage() {
     setForm({ title: '', artist: '', url: '' });
 
     try {
-      const { data } = await supabase.from('songs').insert(newSong).select().maybeSingle();
+      const data = await songRepository.create(newSong as any);
       if (data) {
         setSongs(prev => prev.map(s => s.id === newSong.id ? data : s));
       }
@@ -436,7 +438,7 @@ export default function MusicPage() {
     }
 
     try {
-      await supabase.from('songs').delete().eq('id', id);
+      await songRepository.delete(id);
     } catch {
       // Local fallback
     }
@@ -452,7 +454,7 @@ export default function MusicPage() {
     }
 
     try {
-      await supabase.from('songs').update({ is_favorite: !val }).eq('id', id);
+      await songRepository.update(id, { is_favorite: !val });
     } catch {
       // Local fallback
     }
@@ -468,7 +470,7 @@ export default function MusicPage() {
     }
 
     try {
-      await supabase.from('songs').update({ is_background: !val }).eq('id', id);
+      await songRepository.update(id, { is_background: !val });
     } catch {
       // Local fallback
     }
