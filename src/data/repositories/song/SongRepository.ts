@@ -99,12 +99,15 @@ export class SupabaseSongRepository implements ISongRepository {
       this.cacheData([parsed, ...cached]);
       return parsed;
     } catch (e) {
-      return optimisticEntry;
+      this.cacheData(cached);
+      console.error('[Song] Remote create failed:', e);
+      throw e;
     }
   }
 
   async update(id: string, data: UpdateSongDTO): Promise<SongItemEntity> {
     const cached = this.getCachedData();
+    const previous = [...cached];
     const existingIndex = cached.findIndex(m => m.id === id);
     let optimisticData: SongItemEntity | null = null;
     
@@ -137,8 +140,9 @@ export class SupabaseSongRepository implements ISongRepository {
       }
       return parsed;
     } catch (e) {
-      if (optimisticData) return optimisticData;
-      throw new Error('Song entry not found');
+      this.cacheData(previous);
+      console.error('[Song] Remote update failed:', e);
+      throw e;
     }
   }
 
@@ -159,7 +163,9 @@ export class SupabaseSongRepository implements ISongRepository {
       apiGovernance.invalidate('repo_song_all');
 
     } catch (e) {
-      console.warn('Failed to delete from Supabase, deleted locally only', e);
+      this.cacheData(cached);
+      console.error('[Song] Remote delete failed:', e);
+      throw e;
     }
   }
 
