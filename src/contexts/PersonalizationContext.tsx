@@ -124,12 +124,24 @@ interface PersonalizationContextValue {
 
 const PersonalizationContext = createContext<PersonalizationContextValue | null>(null);
 
+function normalizeAppearance(input: any): AppearanceTheme {
+  const src = input && typeof input === 'object' ? input : {};
+  const fallback = DEFAULT_APPEARANCE;
+  return {
+    ...fallback,
+    ...src,
+    colors: { ...fallback.colors, ...(src.colors && typeof src.colors === 'object' ? src.colors : {}) },
+    typography: { ...fallback.typography, ...(src.typography && typeof src.typography === 'object' ? src.typography : {}) },
+    shape: { ...fallback.shape, ...(src.shape && typeof src.shape === 'object' ? src.shape : {}) },
+  };
+}
+
 export function PersonalizationProvider({ children }: { children: ReactNode }) {
   // 1. Core States with safe localStorage fallback
   const isHydratedRef = useRef(false);
 
   const [appearance, setAppearance] = useState<AppearanceTheme>(() =>
-    safeGetStorage('cuongisme_p_appearance', DEFAULT_APPEARANCE)
+    normalizeAppearance(safeGetStorage('cuongisme_p_appearance', DEFAULT_APPEARANCE))
   );
   const [background, setBackground] = useState<BackgroundConfig>(() =>
     safeGetStorage('cuongisme_p_background', DEFAULT_BACKGROUND)
@@ -318,7 +330,7 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
         const error = null; // for backward compatibility in the following if-check
 
         if (!error && data) {
-          if (data.appearance) setAppearance(data.appearance);
+          if (data.appearance) setAppearance(normalizeAppearance(data.appearance));
           if (data.background) setBackground(data.background);
           if (data.identity) {
             const clean = { ...data.identity };
@@ -364,7 +376,7 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
       const nextIndex = historyIndex + 1;
       const targetSnapshot = history[nextIndex];
       if (targetSnapshot) {
-        setAppearance(targetSnapshot.snapshot.appearance);
+        setAppearance(normalizeAppearance(targetSnapshot.snapshot.appearance));
         setBackground(targetSnapshot.snapshot.background);
         setIdentity(targetSnapshot.snapshot.identity);
         setWorkspaces(targetSnapshot.snapshot.workspaces);
@@ -775,7 +787,7 @@ export function PersonalizationProvider({ children }: { children: ReactNode }) {
         const parsed = JSON.parse(jsonStr);
         if (parsed.theme && parsed.background) {
           createSnapshot('Imported Design');
-          setAppearance(parsed.theme);
+          setAppearance(normalizeAppearance(parsed.theme));
           setBackground(parsed.background);
           if (parsed.navigationStyle) {
             setNavigation((prev) => ({ ...prev, style: parsed.navigationStyle }));
