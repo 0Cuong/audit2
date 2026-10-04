@@ -482,10 +482,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     safeSetStorage('cuongisme_lang', l);
     if (isSupabaseConfigured && settings?.id && settings.id !== DEFAULT_SETTINGS.id) {
       try {
-        await supabase.from('settings').update({ language: l }).eq('id', settings.id);
+        const { error } = await supabase.from('settings').update({ language: l }).eq('id', settings.id);
+        if (error) throw error;
         apiGovernance.invalidate('app_settings');
       } catch (e) {
-        // Silent catch for local mode
+        setLangState((current) => {
+          const previous = current === l ? safeGetStorage<Lang>('cuongisme_lang', 'vi') : current;
+          safeSetStorage('cuongisme_lang', previous);
+          return previous;
+        });
+        console.error('[AppContext] Failed to persist language setting:', e);
       }
     }
   }, [settings?.id]);
@@ -495,10 +501,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     safeSetStorage('cuongisme_theme', th);
     if (isSupabaseConfigured && settings?.id && settings.id !== DEFAULT_SETTINGS.id) {
       try {
-        await supabase.from('settings').update({ theme: th }).eq('id', settings.id);
+        const { error } = await supabase.from('settings').update({ theme: th }).eq('id', settings.id);
+        if (error) throw error;
         apiGovernance.invalidate('app_settings');
       } catch (e) {
-        // Silent catch for local mode
+        setThemeState((current) => {
+          const previous = current === th ? safeGetStorage<ThemeId>('cuongisme_theme', 'dark') : current;
+          safeSetStorage('cuongisme_theme', previous);
+          return previous;
+        });
+        console.error('[AppContext] Failed to persist theme setting:', e);
       }
     }
   }, [settings?.id]);
