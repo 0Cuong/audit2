@@ -95,12 +95,15 @@ export class SupabaseTimelineRepository implements ITimelineRepository {
       this.cacheData([parsed, ...cached]);
       return parsed;
     } catch (e) {
-      return optimisticEntry;
+      this.cacheData(cached);
+      console.error('[Timeline] Remote create failed:', e);
+      throw e;
     }
   }
 
   async update(id: string, data: UpdateTimelineDTO): Promise<TimelineEventEntity> {
     const cached = this.getCachedData();
+    const previous = [...cached];
     const existingIndex = cached.findIndex(m => m.id === id);
     let optimisticData: TimelineEventEntity | null = null;
     
@@ -133,8 +136,9 @@ export class SupabaseTimelineRepository implements ITimelineRepository {
       }
       return parsed;
     } catch (e) {
-      if (optimisticData) return optimisticData;
-      throw new Error('Timeline event not found');
+      this.cacheData(previous);
+      console.error('[Timeline] Remote update failed:', e);
+      throw e;
     }
   }
 
@@ -155,7 +159,9 @@ export class SupabaseTimelineRepository implements ITimelineRepository {
       apiGovernance.invalidate('repo_timeline_all');
 
     } catch (e) {
-      console.warn('Failed to delete from Supabase, deleted locally only', e);
+      this.cacheData(cached);
+      console.error('[Timeline] Remote delete failed:', e);
+      throw e;
     }
   }
 
