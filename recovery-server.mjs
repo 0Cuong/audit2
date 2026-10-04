@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer as createViteServer } from 'vite';
+import { matchRow, validateFilters, validateMutationFilters, resolveContainedPath } from './recovery-guards.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dbPath = path.join(root, 'recovered', 'database.json');
@@ -10,27 +11,20 @@ const storageRoot = path.join(root, 'recpvczpwybpbbntwnnk.storage (1)', 'recpvcz
 const annRoot = path.join(root, 'recovered', 'anniversaries');
 let db = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
 
-function saveDb(){ fs.writeFileSync(dbPath, JSON.stringify(db, null, 2)); }
+function saveDb(){
+  const tmpPath = dbPath + '.tmp';
+  const serialized = JSON.stringify(db, null, 2);
+  fs.writeFileSync(tmpPath, serialized, 'utf8');
+  try {
+    fs.renameSync(tmpPath, dbPath);
+  } catch {
+    // Windows may reject replacing an existing file with renameSync.
+    fs.copyFileSync(tmpPath, dbPath);
+    fs.unlinkSync(tmpPath);
+  }
+}
 function tableRows(name){ return db.tables?.[name]?.rows || []; }
 function setRows(name, rows){ if(!db.tables[name]) db.tables[name]={columns:Object.keys(rows[0]||{}),rows:[]}; db.tables[name].rows=rows; }
-
-function match(row, filters=[]){
-  return filters.every(f=>{
-    const v=row[f.column];
-    switch(f.op){
-      case 'eq': return v===f.value;
-      case 'neq': return v!==f.value;
-      case 'gt': return v>f.value;
-      case 'gte': return v>=f.value;
-      case 'lt': return v<f.value;
-      case 'lte': return v<=f.value;
-      case 'in': return Array.isArray(f.value)&&f.value.includes(v);
-      case 'is': return f.value===null ? v===null : v===f.value;
-      case 'contains': return Array.isArray(v) ? f.value.every(x=>v.includes(x)) : String(v??'').includes(String(f.value??''));
-      default: return true;
-    }
-  });
-}
 
 function normalizeMedia(row){
   const out={...row};
@@ -41,7 +35,7 @@ function normalizeMedia(row){
   }
   if(typeof out.photo_url==='string' && out.photo_url.startsWith('data:image/')){
     const id=out.id;
-    const ext=out.photo_url.startsWith('data:image/webp') ? 'jpg' : 'jpg';
+    const ext=out.photo_url.startsWith('data:image/webp') ? 'webp' : 'jpg';
     out.photo_url='/api/recovered/anniversaries/'+id+'.'+ext;
   }
   if(Array.isArray(out.photos)) out.photos=out.photos.map(x=>typeof x==='string'&&x.startsWith('https://recpvczpwybpbbntwnnk.supabase.co/storage/v1/object/public/') ? x.replace('https://recpvczpwybpbbntwnnk.supabase.co/storage/v1/object/public/','/api/media/') : x);
@@ -60,25 +54,40 @@ const api=http.createServer(async(req,res)=>{
     return send(res,200,{ok:true,source:db.source_backup,counts,totalRows:Object.values(counts).reduce((a,b)=>a+b,0)});
   }
   if(u.pathname.startsWith('/api/recovered/anniversaries/')){
-    const name=path.basename(u.pathname), file=path.join(annRoot,name);
-    if(!file.startsWith(annRoot)||!fs.existsSync(file)) return send(res,404,{error:{message:'Recovered media not found'}});
+    const name=path.basename(u.pathname), file=resolveContainedPath(annRoot,name);
+    if(!fs.existsSync(file)) return send(res,404,{error:{message:'Recovered media not found'}});
     res.writeHead(200,{'content-type':mime(file),'cache-control':'no-cache'}); return fs.createReadStream(file).pipe(res);
   }
   if(u.pathname.startsWith('/api/media/')){
-    const parts=u.pathname.slice('/api/media/'.length).split('/').map(decodeURIComponent);
+    let parts;
+    try {
+      parts = u.pathname.slice('/api/media/'.length).split('/').map((part) => decodeURIComponent(part));
+    } catch {
+      return send(res,400,{error:{message:'Invalid media path'}});
+    }
     const bucket=parts.shift(), rel=parts.join('/');
     if(bucket!=='memories') return send(res,404,{error:{message:'Only recovered memories bucket is mounted'}});
-    const file=path.resolve(storageRoot,rel);
-    if(!file.startsWith(path.resolve(storageRoot))||!fs.existsSync(file)) return send(res,404,{error:{message:'Media not found',path:rel}});
+    let file;
+    try {
+      file = resolveContainedPath(storageRoot, rel);
+    } catch {
+      return send(res,400,{error:{message:'Invalid media path'}});
+    }
+    if(!fs.existsSync(file)) return send(res,404,{error:{message:'Media not found',path:rel}});
     res.writeHead(200,{'content-type':mime(file),'cache-control':'no-cache'}); return fs.createReadStream(file).pipe(res);
   }
   if(u.pathname==='/api/data'){
     if(req.method==='GET') return send(res,200,{data:[],error:null});
     let raw=''; req.on('data',c=>raw+=c); req.on('end',()=>{
       try{
-        const q=JSON.parse(raw||'{}'), name=q.table, rows=tableRows(name);
+        const q=JSON.parse(raw||'{}');
+        const name=q.table;
+        const rows=tableRows(name);
+        const columns=db.tables?.[name]?.columns || (rows[0] ? Object.keys(rows[0]) : []);
         if(q.action==='select'){
-          let out=rows.filter(r=>match(r,q.filters)).map(normalizeMedia);
+          const filters=validateFilters(q.filters, columns);
+          let out=rows.filter(r=>matchRow(r,filters)).map(normalizeMedia);
+          if(q.order?.column && !columns.includes(q.order.column)) throw new Error('Invalid order column: ' + q.order.column);
           if(q.order?.column) out.sort((a,b)=>{const av=a[q.order.column],bv=b[q.order.column]; return (av>bv?1:av<bv?-1:0)*(q.order.ascending===false?-1:1);});
           if(Number.isInteger(q.limit)) out=out.slice(0,q.limit);
           if(q.single==='single') return send(res,out.length===1?200:406,{data:out.length===1?out[0]:null,error:out.length===1?null:{message:'JSON object requested, multiple (or no) rows returned'}});
@@ -86,25 +95,48 @@ const api=http.createServer(async(req,res)=>{
           return send(res,200,{data:out,error:null});
         }
         if(['insert','upsert'].includes(q.action)){
-          const incoming=Array.isArray(q.data)?q.data:[q.data], conflict=q.onConflict||'id';
+          if(!db.tables?.[name]) throw new Error('Unknown recovery table: ' + name);
+          const incoming=Array.isArray(q.data)?q.data:[q.data];
+          if(!incoming.length || incoming.some((item) => !item || typeof item !== 'object')) throw new Error('Invalid insert payload');
+          const conflict=q.onConflict||'id';
+          if(!columns.includes(conflict)) throw new Error('Invalid conflict column: ' + conflict);
+          for(const item of incoming){
+            for(const key of Object.keys(item)) if(!columns.includes(key)) throw new Error('Invalid insert column: ' + key);
+          }
           const next=[...rows];
-          for(const item of incoming){const idx=next.findIndex(r=>r[conflict]===item[conflict]); if(q.action==='upsert'&&idx>=0) next[idx]={...next[idx],...item}; else next.push(item);}
-          setRows(name,next); saveDb(); return send(res,200,{data:q.returnRows?incoming:null,error:null});
+          for(const item of incoming){
+            const idx=next.findIndex(r=>r[conflict]===item[conflict]);
+            if(q.action==='upsert'&&idx>=0) next[idx]={...next[idx],...item};
+            else next.push(item);
+          }
+          setRows(name,next); saveDb();
+          const inserted=next.filter((row) => incoming.some((item) => item[conflict]===row[conflict])).map(normalizeMedia);
+          return send(res,200,{data:q.returnRows?(q.single==='single'?inserted[0]??null:inserted):null,error:null});
         }
         if(q.action==='update'||q.action==='delete'){
-          const selected=rows.filter(r=>match(r,q.filters));
-          if(q.action==='update') for(const r of rows) if(match(r,q.filters)) Object.assign(r,q.data||{});
-          else setRows(name,rows.filter(r=>!match(r,q.filters)));
-          saveDb(); return send(res,200,{data:q.returnRows?selected:null,error:null});
+          const filters=validateMutationFilters(q.filters, columns, q.action);
+          const selected=rows.filter(r=>matchRow(r,filters));
+          if(q.action==='update') {
+            const data=q.data && typeof q.data==='object' ? q.data : {};
+            for(const key of Object.keys(data)) if(!columns.includes(key)) throw new Error('Invalid update column: ' + key);
+            for(const r of rows) if(matchRow(r,filters)) Object.assign(r,data);
+          } else {
+            setRows(name,rows.filter(r=>!matchRow(r,filters)));
+          }
+          saveDb(); return send(res,200,{data:q.returnRows?(q.action==='update'?rows.filter(r=>matchRow(r,filters)).map(normalizeMedia):selected.map(normalizeMedia)):null,error:null});
         }
         return send(res,400,{data:null,error:{message:'Unsupported local action'}});
-      }catch(e){return send(res,500,{data:null,error:{message:e.message}});}
+      }catch(e){
+        const status=/without a filter|Invalid filter|Unsupported filter|Invalid (order|conflict|insert|update)|Unknown recovery table|payload/i.test(e.message) ? 400 : 500;
+        return send(res,status,{data:null,error:{message:e.message}});
+      }
     }); return;
   }
   if(u.pathname.startsWith('/api/storage/')){
-    if(req.method==='DELETE') return send(res,200,{data:[],error:null});
-    return send(res,501,{data:null,error:{message:'Local recovery storage upload is not enabled in audit mode'}});
+    return send(res,501,{data:null,error:{message:'Local recovery storage mutation is not enabled in audit mode'}}, {'Allow':'GET'});
   }
   vite.middlewares(req,res,()=>send(res,404,{error:{message:'Not found'}}));
 });
-api.listen(3000,'0.0.0.0',()=>console.log('audit2 local recovery: http://localhost:3000/'));
+const recoveryHost = process.env.RECOVERY_HOST || '127.0.0.1';
+const recoveryPort = Number(process.env.PORT || 3000);
+api.listen(recoveryPort,recoveryHost,()=>console.log(`audit2 local recovery: http://${recoveryHost === '0.0.0.0' ? 'localhost' : recoveryHost}:${recoveryPort}/`));
