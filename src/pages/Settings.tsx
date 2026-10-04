@@ -26,6 +26,7 @@ import {
 import { useApp, type ThemeId, themeConfig } from '../contexts/AppContext';
 import { usePersonalization } from '../contexts/PersonalizationContext';
 import { supabase } from '../lib/supabase';
+import { apiGovernance } from '../lib/api-governance';
 import type { Lang } from '../i18n/translations';
 
 interface ContactLink {
