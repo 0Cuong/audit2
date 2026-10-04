@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "dev:vite": "vite --host 0.0.0.0 --port 3000",
     "skills:check": "node scripts/validate-skills.mjs",
-    "skills:route": "node scripts/skill-router.mjs"
+    "skills:route": "node scripts/skill-router.mjs",
+    "test": "node --test worker/*.test.mjs"
   },
   "dependencies": {
     "framer-motion": "^12.40.0",
