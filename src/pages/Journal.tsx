@@ -27,6 +27,7 @@ import { useApp } from '../contexts/AppContext';
 import { supabase } from '../lib/supabase';
 import { apiGovernance } from '../lib/api-governance';
 import { formatDateLocale } from '../lib/dateUtils';
+import { journalRepository } from '../data/repositories/journal/JournalRepository';
 
 // ==========================================
 // 1. DATA TYPES & CONTRACTS
