@@ -36,27 +36,39 @@ function parseCopyLine(line) {
   const fields = [];
   let current = "";
   let escaped = false;
+  let nullField = false;
+
+  const push = () => {
+    fields.push(nullField ? null : current);
+    current = "";
+    nullField = false;
+  };
+
   for (let i = 0; i < line.length; i++) {
     const ch = line[i];
     if (escaped) {
-      if (ch === "t") current += "\t";
-      else if (ch === "n") current += "\n";
-      else if (ch === "r") current += "\r";
-      else if (ch === "b") current += "\b";
-      else if (ch === "f") current += "\f";
-      else if (ch === "v") current += "\v";
-      else if (ch === "N" && current === "" && i === 1) current = null;
-      else current += ch;
+      if (ch === "N" && current === "" && !nullField) {
+        nullField = true;
+      } else if (!nullField) {
+        if (ch === "t") current += "\t";
+        else if (ch === "n") current += "\n";
+        else if (ch === "r") current += "\r";
+        else if (ch === "b") current += "\b";
+        else if (ch === "f") current += "\f";
+        else if (ch === "v") current += "\v";
+        else current += ch;
+      }
       escaped = false;
       continue;
     }
     if (ch === "\\") { escaped = true; continue; }
-    if (ch === "\t") { fields.push(current); current = ""; continue; }
-    current += ch;
+    if (ch === "\t") { push(); continue; }
+    if (!nullField) current += ch;
   }
-  if (escaped) current += "\\";
-  fields.push(current);
-  return fields.map(v => v === null ? null : v);
+
+  if (escaped && !nullField) current += "\\";
+  push();
+  return fields;
 }
 
 function parsePgArray(value) {
