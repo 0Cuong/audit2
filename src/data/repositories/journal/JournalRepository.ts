@@ -99,12 +99,15 @@ export class SupabaseJournalRepository implements IJournalRepository {
       this.cacheData([parsed, ...cached]);
       return parsed;
     } catch (e) {
-      return optimisticEntry;
+      this.cacheData(cached);
+      console.error('[Journal] Remote create failed:', e);
+      throw e;
     }
   }
 
   async update(id: string, data: UpdateJournalDTO): Promise<JournalEntryEntity> {
     const cached = this.getCachedData();
+    const previous = [...cached];
     const existingIndex = cached.findIndex(m => m.id === id);
     let optimisticData: JournalEntryEntity | null = null;
     
@@ -137,8 +140,9 @@ export class SupabaseJournalRepository implements IJournalRepository {
       }
       return parsed;
     } catch (e) {
-      if (optimisticData) return optimisticData;
-      throw new Error('Journal entry not found');
+      this.cacheData(previous);
+      console.error('[Journal] Remote update failed:', e);
+      throw e;
     }
   }
 
@@ -159,7 +163,9 @@ export class SupabaseJournalRepository implements IJournalRepository {
       apiGovernance.invalidate('repo_journal_all');
 
     } catch (e) {
-      console.warn('Failed to delete from Supabase, deleted locally only', e);
+      this.cacheData(cached);
+      console.error('[Journal] Remote delete failed:', e);
+      throw e;
     }
   }
 
