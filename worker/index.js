@@ -123,6 +123,7 @@ const TABLES = {
 };
 
 import { BUCKETS } from "./modules/storage-constants.js";
+import { buildCorsHeaders, isCorsOriginAllowed } from "./cors.js";
 
 
 function json(data, status = 200, headers = {}) {
@@ -132,20 +133,9 @@ function json(data, status = 200, headers = {}) {
   });
 }
 
-function corsHeaders(request, env) {
-  const origin = request.headers.get("Origin");
-  const configured = String(env.CORS_ORIGIN || "").trim();
-  return {
-    "Access-Control-Allow-Origin": configured && configured !== "*" ? configured : (origin || "*"),
-    "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, X-Import-Secret, X-Audit2-Key",
-    "Access-Control-Max-Age": "86400"
-  };
-}
-
 function withCors(response, request, env) {
   const headers = new Headers(response.headers);
-  for (const [key, value] of Object.entries(corsHeaders(request, env))) headers.set(key, value);
+  for (const [key, value] of Object.entries(buildCorsHeaders(request, env.CORS_ORIGIN))) headers.set(key, value);
   headers.set("Vary", "Origin");
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
@@ -535,6 +525,10 @@ async function handleApi(request, env) {
 
 export default {
   async fetch(request, env) {
+    if (!isCorsOriginAllowed(request, env.CORS_ORIGIN)) {
+      return withCors(json(apiError("Origin not allowed", 403, "CORS_ORIGIN_DENIED"), 403), request, env);
+    }
+
     if (request.method === "OPTIONS") return withCors(new Response(null, { status: 204 }), request, env);
 
     const url = new URL(request.url);
