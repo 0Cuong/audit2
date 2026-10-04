@@ -1,5 +1,5 @@
 type Row = Record<string, any>;
-interface QueryResult<T = any> { data: T; error: any; }
+interface QueryResult<T = any> { data: T | null; error: any; }
 
 const base = String(import.meta.env.VITE_API_BASE_URL || "").trim().replace(/\/+$/, "");
 const apiUrl = (path: string) => base + path;
@@ -39,18 +39,27 @@ class Query<T = any> implements PromiseLike<QueryResult<T>> {
   order(column: string, options?: { ascending?: boolean }) { this.payload.order = { column, ascending: options?.ascending !== false }; return this; }
   limit(count: number) { this.payload.limit = count; return this; }
 
+  contains(column: string, value: any) { this.payload.filters.push({ column, op: "contains", value }); return this; }
+
   single() { this.payload.single = "single"; return this.execute(); }
   maybeSingle() { this.payload.single = "maybeSingle"; return this.execute(); }
 
-  execute() { return request<QueryResult<T>>("/api/data", { method: "POST", body: JSON.stringify(this.payload) }); }
-  then(onfulfilled?: any, onrejected?: any) { return this.execute().then(onfulfilled, onrejected); }
-  catch(onrejected?: any) { return this.execute().catch(onrejected); }
+  execute(): Promise<QueryResult<T>> { return request<T>("/api/data", { method: "POST", body: JSON.stringify(this.payload) }); }
+  then<TResult1 = QueryResult<T>, TResult2 = never>(
+    onfulfilled?: ((value: QueryResult<T>) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
+  ): PromiseLike<TResult1 | TResult2> {
+    return this.execute().then(onfulfilled, onrejected);
+  }
+  catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | null): Promise<TResult | QueryResult<T>> {
+    return this.execute().catch(onrejected);
+  }
 }
 
 class StorageBucket {
   constructor(private readonly bucket: string) {}
 
-  async upload(path: string, file: Blob) {
+  async upload(path: string, file: Blob, _options?: { cacheControl?: string; upsert?: boolean }) {
     const form = new FormData();
     form.append("file", file, file instanceof File ? file.name : path.split("/").pop() || "file");
     const response = await fetch(apiUrl("/api/storage/" + encodeURIComponent(this.bucket) + "/" + path.split("/").map(encodeURIComponent).join("/")), { method: "POST", body: form });
