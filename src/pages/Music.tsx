@@ -34,7 +34,7 @@ export interface SongItem {
   is_favorite: boolean;
   is_background: boolean;
   created_at?: string;
-  artwork_url?: string; // Optional field for future-proofing without breaking schema
+  artwork_url?: string | null; // Optional field; backend may return NULL
 }
 
 const DEFAULT_SONGS: SongItem[] = [
