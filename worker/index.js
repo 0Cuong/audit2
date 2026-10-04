@@ -292,7 +292,7 @@ async function updateRows(env, body) {
   if (!where) return apiError("Refusing update without a filter", 400, "MISSING_FILTER");
 
   const values = cols.map((col) => serializeValue(table, col, data[col]));
-  const sql = 'UPDATE "' + table + '" SET ' + cols.map((c) => '"' + c + '" = ?").replace(' + '') + where;
+  const sql = 'UPDATE "' + table + '" SET ' + cols.map((c) => '"' + c + '" = ?').join(", ") + where;
   await env.DB.prepare(sql).bind(...values, ...whereParams).run();
 
   if (!body.returnRows) return { data: null, error: null };
