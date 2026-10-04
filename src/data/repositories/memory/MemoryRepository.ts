@@ -136,13 +136,15 @@ export class SupabaseMemoryRepository implements IMemoryRepository {
       this.cacheData([parsed, ...cached]);
       return parsed;
     } catch (e) {
-      console.warn('Failed to save to Supabase, data only saved locally', e);
-      return optimisticMemory;
+      this.cacheData(cached);
+      console.error('[Memory] Remote create failed:', e);
+      throw e;
     }
   }
 
   async update(id: string, data: UpdateMemoryDTO): Promise<MemoryEntity> {
     const cached = this.getCachedData();
+    const previous = [...cached];
     const existingIndex = cached.findIndex(m => m.id === id);
     let optimisticData: MemoryEntity | null = null;
     
@@ -176,9 +178,9 @@ export class SupabaseMemoryRepository implements IMemoryRepository {
       }
       return parsed;
     } catch (e) {
-      console.warn('Failed to update Supabase, updated locally only', e);
-      if (optimisticData) return optimisticData;
-      throw new Error('Memory not found in local cache or server');
+      this.cacheData(previous);
+      console.error('[Memory] Remote update failed:', e);
+      throw e;
     }
   }
 
@@ -199,7 +201,9 @@ export class SupabaseMemoryRepository implements IMemoryRepository {
       apiGovernance.invalidate('repo_memories_all');
 
     } catch (e) {
-      console.warn('Failed to delete from Supabase, deleted locally only', e);
+      this.cacheData(cached);
+      console.error('[Memory] Remote delete failed:', e);
+      throw e;
     }
   }
 
