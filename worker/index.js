@@ -190,6 +190,18 @@ function buildWhere(table, filters, params) {
       continue;
     }
 
+    if (op === "contains") {
+      if (!Array.isArray(value) || value.length === 0) {
+        parts.push("1 = 1");
+        continue;
+      }
+      for (const item of value) {
+        parts.push('EXISTS (SELECT 1 FROM json_each("' + column + '") WHERE json_each.value = ?)');
+        params.push(String(item));
+      }
+      continue;
+    }
+
     const operators = { eq: "=", neq: "!=", gt: ">", gte: ">=", lt: "<", lte: "<=" };
     if (!operators[op]) throw new Error("Unsupported filter operator: " + op);
     parts.push('"' + column + '" ' + operators[op] + " ?");
