@@ -25,6 +25,7 @@ import {
 } from '../types/personalization';
 import { safeGetStorage, safeSetStorage } from '../lib/storage';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { apiGovernance } from '../lib/api-governance';
 
 interface PersonalizationContextValue {
   // Appearance & Theme
