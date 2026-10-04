@@ -99,12 +99,15 @@ export class SupabaseGiftRepository implements IGiftRepository {
       this.cacheData([parsed, ...cached]);
       return parsed;
     } catch (e) {
-      return optimisticEntry;
+      this.cacheData(cached);
+      console.error('[Gift] Remote create failed:', e);
+      throw e;
     }
   }
 
   async update(id: string, data: UpdateGiftDTO): Promise<GiftItemEntity> {
     const cached = this.getCachedData();
+    const previous = [...cached];
     const existingIndex = cached.findIndex(m => m.id === id);
     let optimisticData: GiftItemEntity | null = null;
     
@@ -137,8 +140,9 @@ export class SupabaseGiftRepository implements IGiftRepository {
       }
       return parsed;
     } catch (e) {
-      if (optimisticData) return optimisticData;
-      throw new Error('Gift entry not found');
+      this.cacheData(previous);
+      console.error('[Gift] Remote update failed:', e);
+      throw e;
     }
   }
 
@@ -159,7 +163,9 @@ export class SupabaseGiftRepository implements IGiftRepository {
       apiGovernance.invalidate('repo_gift_all');
 
     } catch (e) {
-      console.warn('Failed to delete from Supabase, deleted locally only', e);
+      this.cacheData(cached);
+      console.error('[Gift] Remote delete failed:', e);
+      throw e;
     }
   }
 
