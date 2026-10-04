@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [main]
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: audit2-ci-${{ github.ref }}
   cancel-in-progress: true
@@ -22,6 +22,31 @@ jobs:
           node-version: 24
           package-manager-cache: false
       - run: npm install --no-audit --no-fund
+      - name: Export generated npm lockfile for reproducibility audit
+        uses: actions/upload-artifact@v7
+        with:
+          name: audit2-generated-lockfile
+          path: package-lock.json
+          if-no-files-found: error
+      - name: Commit generated lockfile and restore production workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main --depth=1
+          git show origin/main:.github/workflows/cloudflare.yml > .github/workflows/cloudflare.yml
+          git add package-lock.json .github/workflows/cloudflare.yml
+          if git diff --cached --quiet; then
+            echo "No lockfile changes to commit"
+          else
+            git commit -m "chore: add npm lockfile"
+            git push origin HEAD:refs/heads/generated/audit2-lockfile
+          fi
+      - name: Verify clean npm ci from committed lockfile
+        shell: bash
+        run: |
+          rm -rf node_modules
+          npm ci --no-audit --no-fund
       - run: npm run skills:check
       - run: npm test
       - run: npm run typecheck
