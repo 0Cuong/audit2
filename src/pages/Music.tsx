@@ -29,7 +29,7 @@ import { songRepository } from '../data/repositories/song/SongRepository';
 export interface SongItem {
   id: string;
   title: string;
-  artist?: string;
+  artist?: string | null;
   url: string;
   is_favorite: boolean;
   is_background: boolean;
