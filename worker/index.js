@@ -122,7 +122,8 @@ const TABLES = {
   }
 };
 
-const BUCKETS = new Set(["avatars", "memories", "photos", "assets"]);
+import { BUCKETS } from "./modules/storage-constants.js";
+
 
 function json(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), {
