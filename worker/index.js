@@ -37,7 +37,7 @@ const TABLES = {
   },
   bucket_list_items: {
     id:"text", couple_id:"text", title:"text", category:"text", description:"text",
-    is_completed:"boolean", completed_at:"text", image_url:"text", created_at:"text", updated_at:"text"
+    is_completed:"boolean", completed_at:"text", image_url:"text", from_partner:"text", created_at:"text", updated_at:"text"
   },
   anniversaries: {
     id:"text", couple_id:"text", title:"text", date:"date", anniversary_type:"text", type:"text",
@@ -49,7 +49,7 @@ const TABLES = {
   },
   songs: {
     id:"text", couple_id:"text", title:"text", artist:"text", url:"text",
-    is_favorite:"boolean", is_background:"boolean", artwork_url:"text", created_at:"text", updated_at:"text"
+    is_favorite:"boolean", is_background:"boolean", artwork_url:"text", cover_url:"text", lyrics:"text", created_at:"text", updated_at:"text"
   },
   gifts: {
     id:"text", couple_id:"text", title:"text", description:"text", url:"text", image_url:"text",
