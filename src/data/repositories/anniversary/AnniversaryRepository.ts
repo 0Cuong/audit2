@@ -95,12 +95,15 @@ export class SupabaseAnniversaryRepository implements IAnniversaryRepository {
       this.cacheData([...cached, parsed]);
       return parsed;
     } catch (e) {
-      return optimisticEntry;
+      this.cacheData(cached);
+      console.error('[Anniversary] Remote create failed:', e);
+      throw e;
     }
   }
 
   async update(id: string, data: UpdateAnniversaryDTO): Promise<AnniversaryEntity> {
     const cached = this.getCachedData();
+    const previous = [...cached];
     const existingIndex = cached.findIndex(m => m.id === id);
     let optimisticData: AnniversaryEntity | null = null;
     
@@ -133,8 +136,9 @@ export class SupabaseAnniversaryRepository implements IAnniversaryRepository {
       }
       return parsed;
     } catch (e) {
-      if (optimisticData) return optimisticData;
-      throw new Error('Anniversary not found');
+      this.cacheData(previous);
+      console.error('[Anniversary] Remote update failed:', e);
+      throw e;
     }
   }
 
@@ -155,7 +159,9 @@ export class SupabaseAnniversaryRepository implements IAnniversaryRepository {
       apiGovernance.invalidate('repo_anniversary_all');
 
     } catch (e) {
-      console.warn('Failed to delete from Supabase, deleted locally only', e);
+      this.cacheData(cached);
+      console.error('[Anniversary] Remote delete failed:', e);
+      throw e;
     }
   }
 
