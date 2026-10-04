@@ -1,4 +1,4 @@
-import { useEffect, lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { AppProvider } from './contexts/AppContext';
@@ -11,7 +11,6 @@ import IntroExperience from './components/intro/IntroExperience';
 import ErrorBoundary from './components/ErrorBoundary';
 import CinematicWorldEngine from './components/cinematic/CinematicWorldEngine';
 import CinematicScene from './components/cinematic/CinematicScene';
-import { useState } from 'react';
 
 const AppearanceStudioModal = lazy(() => import('./components/studio/AppearanceStudioModal'));
 const AssetLibraryModal = lazy(() => import('./components/assets/AssetLibraryModal'));
@@ -33,32 +32,13 @@ const Contact = lazy(() => import('./pages/Contact'));
 const SettingsPage = lazy(() => import('./pages/Settings'));
 const CustomPageView = lazy(() => import('./pages/CustomPageView'));
 
-function ThemedApp() {
+function BackgroundLayer() {
   const { appearance, background } = usePersonalization();
-  const location = useLocation();
-  const [showIntro, setShowIntro] = useState(true);
-  const [forceReplay, setForceReplay] = useState(false);
 
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [location.pathname]);
-
-  // Global listener to replay intro from Navbar, Studio, or Settings
-  useEffect(() => {
-    const handleReplay = () => {
-      setForceReplay(true);
-      setShowIntro(true);
-    };
-
-    window.addEventListener('replay-intro', handleReplay);
-    return () => window.removeEventListener('replay-intro', handleReplay);
-  }, []);
-
-  // Generate dynamic background style
-  const getBgStyle = () => {
-    const isImageOrGif = background.type === 'image' || background.type === 'gif';
+  const getBackgroundStyle = () => {
+    const media = background.type === 'image' || background.type === 'gif';
     return {
-      background: isImageOrGif ? `url(${background.value})` : background.value,
+      background: media ? `url(${background.value})` : background.value,
       backgroundSize: background.size || 'cover',
       backgroundPosition: background.position || 'center',
       backgroundRepeat: background.repeat || 'no-repeat',
@@ -69,88 +49,73 @@ function ThemedApp() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col transition-colors duration-300 antialiased relative selection:bg-[#E5A93C]/30 selection:text-white bg-[#030306]">
-      {/* 3D/4D Procedural Cosmic Spatial World Engine */}
+    <>
       <CinematicWorldEngine />
-
-      {/* Dynamic Background Media Layer (if user has custom background media) */}
-      {background.type !== 'solid' && (
-        <div 
-          className="personal-os-bg-layer" 
-          style={getBgStyle()} 
-        />
-      )}
-
-      {/* Dynamic Background Darkening Overlay */}
+      {background.type !== 'solid' && <div className="personal-os-bg-layer" style={getBackgroundStyle()} aria-hidden="true" />}
       {background.overlayOpacity > 0 && (
-        <div 
-          className="personal-os-overlay" 
-          style={{
-            backgroundColor: background.overlayColor || '#000000',
-            opacity: background.overlayOpacity,
-          }}
+        <div
+          className="personal-os-overlay"
+          style={{ backgroundColor: background.overlayColor || '#000000', opacity: background.overlayOpacity }}
+          aria-hidden="true"
         />
       )}
+      {appearance.noiseOverlay && <div className="noise-overlay" aria-hidden="true" />}
+    </>
+  );
+}
 
-      {/* Film Grain Subtle Optical Overlay */}
-      {appearance.noiseOverlay && <div className="noise-overlay" />}
+const routes = [
+  ['/', 'dash', Dashboard], ['dashboard', 'dash', Dashboard], ['timeline', 'timeline', Timeline],
+  ['memories', 'memories', Memories], ['letters', 'letters', Letters], ['journal', 'journal', Journal],
+  ['mood', 'mood', MoodTracker], ['bucket-list', 'bucket', BucketList], ['anniversary', 'anniv', Anniversary],
+  ['zodiac', 'zodiac', Zodiac], ['map', 'map', LoveMap], ['music', 'music', MusicPage],
+  ['gifts', 'gifts', Gifts], ['hub', 'hub', Hub], ['contact', 'contact', Contact],
+  ['settings', 'settings', SettingsPage], ['page/:pageId', 'custom-page', CustomPageView],
+] as const;
 
-      {/* Global Utilities */}
+function ThemedApp() {
+  const location = useLocation();
+  const [showIntro, setShowIntro] = useState(true);
+  const [forceReplay, setForceReplay] = useState(false);
+
+  useEffect(() => window.scrollTo(0, 0), [location.pathname]);
+
+  useEffect(() => {
+    const handleReplay = () => {
+      setForceReplay(true);
+      setShowIntro(true);
+    };
+    window.addEventListener('replay-intro', handleReplay);
+    return () => window.removeEventListener('replay-intro', handleReplay);
+  }, []);
+
+  return (
+    <div className="min-h-screen flex flex-col antialiased relative selection:bg-[#E5A93C]/30 selection:text-white bg-[var(--p-bg,#09090c)]">
+      <BackgroundLayer />
       <ScrollProgress />
       <CommandPalette />
-      
-      {/* Navigation Bar */}
       <Navbar />
-      
-      {/* Cinematic Spatial Route Views */}
-      <div className="flex-grow relative z-10">
-        <Suspense fallback={
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="w-8 h-8 rounded-full border-2 border-[#E5A93C]/20 border-t-[#E5A93C] animate-spin" />
-          </div>
-        }>
+
+      <main className="flex-grow relative z-10">
+        <Suspense fallback={<div className="flex items-center justify-center min-h-[60vh]" aria-live="polite"><div className="w-7 h-7 rounded-full border-2 border-[var(--p-border)] border-t-[var(--p-accent)] animate-spin" /></div>}>
           <AnimatePresence mode="wait">
             <Routes location={location} key={location.pathname}>
-              <Route path="/" element={<CinematicScene sceneId="dash"><Dashboard /></CinematicScene>} />
-              <Route path="/dashboard" element={<CinematicScene sceneId="dash"><Dashboard /></CinematicScene>} />
-              <Route path="/timeline" element={<CinematicScene sceneId="timeline"><Timeline /></CinematicScene>} />
-              <Route path="/memories" element={<CinematicScene sceneId="memories"><Memories /></CinematicScene>} />
-              <Route path="/letters" element={<CinematicScene sceneId="letters"><Letters /></CinematicScene>} />
-              <Route path="/journal" element={<CinematicScene sceneId="journal"><Journal /></CinematicScene>} />
-              <Route path="/mood" element={<CinematicScene sceneId="mood"><MoodTracker /></CinematicScene>} />
-              <Route path="/bucket-list" element={<CinematicScene sceneId="bucket"><BucketList /></CinematicScene>} />
-              <Route path="/anniversary" element={<CinematicScene sceneId="anniv"><Anniversary /></CinematicScene>} />
-              <Route path="/zodiac" element={<CinematicScene sceneId="zodiac"><Zodiac /></CinematicScene>} />
-              <Route path="/map" element={<CinematicScene sceneId="map"><LoveMap /></CinematicScene>} />
-              <Route path="/music" element={<CinematicScene sceneId="music"><MusicPage /></CinematicScene>} />
-              <Route path="/gifts" element={<CinematicScene sceneId="gifts"><Gifts /></CinematicScene>} />
-              <Route path="/hub" element={<CinematicScene sceneId="hub"><Hub /></CinematicScene>} />
-              <Route path="/contact" element={<CinematicScene sceneId="contact"><Contact /></CinematicScene>} />
-              <Route path="/settings" element={<CinematicScene sceneId="settings"><SettingsPage /></CinematicScene>} />
-              <Route path="/page/:pageId" element={<CinematicScene sceneId="custom-page"><CustomPageView /></CinematicScene>} />
+              {routes.map(([path, sceneId, Page]) => (
+                <Route key={path} path={path} element={<CinematicScene sceneId={sceneId}><Page /></CinematicScene>} />
+              ))}
             </Routes>
           </AnimatePresence>
         </Suspense>
-      </div>
+      </main>
 
       <Footer />
 
-      {/* Global Modals */}
       <Suspense fallback={null}>
         <AppearanceStudioModal />
         <AssetLibraryModal />
       </Suspense>
 
-      {/* Cinematic Opening Sequence Experience ("The World Is Being Assembled") */}
-      {showIntro && (
-        <IntroExperience
-          forceReplay={forceReplay}
-          onComplete={() => {
-            setShowIntro(false);
-            setForceReplay(false);
-          }}
-        />
-      )}
+      {showIntro && <IntroExperience forceReplay={forceReplay} onComplete={() => { setShowIntro(false); setForceReplay(false); }} />}
     </div>
   );
 }
