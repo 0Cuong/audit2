@@ -1,0 +1,30 @@
+{
+  "generated_at": "2026-10-04T20:01:03.528Z",
+  "source_project": "recpvczpwybpbbntwnnk",
+  "source_url": "https://recpvczpwybpbbntwnnk.supabase.co",
+  "storage": "31 live objects in memories bucket matched repository path/name/size inventory",
+  "inline_anniversary_media": [
+    {
+      "path": "recovered/anniversaries/24704498-7327-40fc-812c-d5fe51eb04e7.jpg",
+      "blob_sha": "924d1722be364a5f36c23d60d3bbc9310d8332ca"
+    },
+    {
+      "path": "recovered/anniversaries/2538fd50-9ea9-4d57-b8d3-3ed6458019c3.jpg",
+      "blob_sha": "89f837dedafc6a79b17b8c8e3e11408783cd6fcb"
+    },
+    {
+      "path": "recovered/anniversaries/7b7e2939-b6b7-42a3-9121-555cba8f259f.jpg",
+      "blob_sha": "75ac46294a4172147d130641bb026006cd574898"
+    },
+    {
+      "path": "recovered/anniversaries/8cba8636-fe14-417b-98a9-298cf44ed4eb.jpg",
+      "blob_sha": "81096a1e3690c5c279b3ade16dee0680f1d49331"
+    },
+    {
+      "path": "recovered/anniversaries/c8ded1f9-614a-48d3-88f0-36885a2d5bb5.jpg",
+      "blob_sha": "271a5519a0a5ef0385ed0e69c37eb5605b34f083"
+    }
+  ],
+  "db_backup": "db_cluster-03-10-2026@23-05-37.backup",
+  "note": "5 anniversary photo_url values were data:image/*;base64 embedded in PostgreSQL and extracted as standalone files."
+}
