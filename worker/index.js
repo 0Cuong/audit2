@@ -7,7 +7,7 @@ const TABLES = {
   },
   timeline_events: {
     id:"text", couple_id:"text", title:"text", date:"date", event_type:"text", story:"text",
-    photos:"json", location:"text", mood:"text", tags:"json", sort_order:"number",
+    photos:"json", location:"text", mood:"text", tags:"json", sort_order:"number", from_partner:"text",
     description:"text", image_url:"text", category:"text", icon:"text", is_favorite:"boolean",
     created_at:"text", updated_at:"text"
   },
@@ -26,7 +26,10 @@ const TABLES = {
     id:"text", couple_id:"text", date:"date", content:"text", mood:"text", photos:"json",
     title:"text", content_html:"text", type:"text", time:"text", tags:"json",
     author_id:"text", author_name:"text", author:"text", location:"json", location_name:"text",
-    is_favorite:"boolean", is_pinned:"boolean", metadata:"json", created_at:"text", updated_at:"text"
+    is_favorite:"boolean", is_pinned:"boolean", metadata:"json",
+    sender_name:"text", sender_avatar:"text", response_content:"text",
+    response_sender_name:"text", response_sender_avatar:"text", response_date:"date",
+    created_at:"text", updated_at:"text"
   },
   mood_entries: {
     id:"text", couple_id:"text", mood:"text", note:"text", partner:"text", date:"date",
@@ -97,6 +100,25 @@ const TABLES = {
   },
   user_config_revisions: {
     id:"text", couple_id:"text", timestamp:"text", label:"text", snapshot:"json"
+  },
+  bucket_list_replies: {
+    id:"text", created_at:"text", bucket_item_id:"text", content:"text", from_partner:"text"
+  },
+  couple_invites: {
+    id:"text", couple_id:"text", email:"text", token:"text", created_by:"text",
+    expires_at:"text", accepted_at:"text", created_at:"text"
+  },
+  couple_members: {
+    couple_id:"text", user_id:"text", role:"text", created_at:"text"
+  },
+  listening_history: {
+    id:"text", song_id:"text", played_at:"text"
+  },
+  love_letter_replies: {
+    id:"text", letter_id:"text", content:"text", from_partner:"text", created_at:"text"
+  },
+  timeline_event_replies: {
+    id:"number", event_id:"text", from_partner:"text", content:"text", created_at:"text"
   }
 };
 
@@ -444,8 +466,16 @@ async function handleAdminImport(request, env) {
     tableSchema(table);
     const rows = Array.isArray(body?.rows) ? body.rows : [];
 
+    const conflict = table === "couple_members" ? ["couple_id", "user_id"] : "id";
     for (let i = 0; i < rows.length; i += 40) {
-      await insertRows(env, { table, action: "upsert", data: rows.slice(i, i + 40), returnRows: false, onConflict: "id" });
+      await insertRows(env, {
+        table,
+        action: "upsert",
+        data: rows.slice(i, i + 40),
+        returnRows: false,
+        onConflict: conflict,
+        onConflictAction: body?.mode === "insert-if-missing" ? "ignore" : "update"
+      });
     }
 
     return json({ ok: true, table, imported: rows.length });
