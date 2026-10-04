@@ -99,12 +99,15 @@ export class SupabaseMessageRepository implements IMessageRepository {
       this.cacheData([parsed, ...cached]);
       return parsed;
     } catch (e) {
-      return optimisticEntry;
+      this.cacheData(cached);
+      console.error('[Message] Remote create failed:', e);
+      throw e;
     }
   }
 
   async update(id: string, data: UpdateMessageDTO): Promise<MessageItemEntity> {
     const cached = this.getCachedData();
+    const previous = [...cached];
     const existingIndex = cached.findIndex(m => m.id === id);
     let optimisticData: MessageItemEntity | null = null;
     
@@ -137,8 +140,9 @@ export class SupabaseMessageRepository implements IMessageRepository {
       }
       return parsed;
     } catch (e) {
-      if (optimisticData) return optimisticData;
-      throw new Error('Message entry not found');
+      this.cacheData(previous);
+      console.error('[Message] Remote update failed:', e);
+      throw e;
     }
   }
 
@@ -159,7 +163,9 @@ export class SupabaseMessageRepository implements IMessageRepository {
       apiGovernance.invalidate('repo_message_all');
 
     } catch (e) {
-      console.warn('Failed to delete from Supabase, deleted locally only', e);
+      this.cacheData(cached);
+      console.error('[Message] Remote delete failed:', e);
+      throw e;
     }
   }
 
