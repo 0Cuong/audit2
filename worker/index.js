@@ -336,12 +336,23 @@ async function insertRows(env, body) {
       return env.DB.prepare('INSERT INTO "' + table + '" (' + quoted + ") VALUES (" + marks + ")").bind(...values);
     }
 
-    const conflict = body.onConflict || "id";
-    validateColumn(table, conflict);
-    const updates = cols.filter((c) => c !== conflict).map((c) => '"' + c + '" = excluded."' + c + '"');
+    const conflicts = Array.isArray(body.onConflict) ? body.onConflict : [body.onConflict || "id"];
+    conflicts.forEach((column) => validateColumn(table, column));
+    const conflictSet = new Set(conflicts);
+    const updates = cols
+      .filter((column) => !conflictSet.has(column))
+      .map((column) => "\"" + column + "\" = excluded.\"" + column + "\"");
+    const target = conflicts.map((column) => "\"" + column + "\"").join(", ");
+
+    if (body.onConflictAction === "ignore") {
+      return env.DB.prepare(
+        'INSERT INTO "' + table + '" (' + quoted + ") VALUES (" + marks + ') ON CONFLICT (' + target + ') DO NOTHING'
+      ).bind(...values);
+    }
+
     if (!updates.length) throw new Error("Upsert has no fields to update");
     return env.DB.prepare(
-      'INSERT INTO "' + table + '" (' + quoted + ") VALUES (" + marks + ') ON CONFLICT ("' + conflict + '") DO UPDATE SET ' + updates.join(", ")
+      'INSERT INTO "' + table + '" (' + quoted + ") VALUES (" + marks + ') ON CONFLICT (' + target + ') DO UPDATE SET ' + updates.join(", ")
     ).bind(...values);
   });
 
