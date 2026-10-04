@@ -239,7 +239,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const data = await apiGovernance.fetchWithGovernance(
         'app_couple_profile',
         async () => {
-          const { data: res, error } = await supabase.from('couple_profile').select('*').limit(1).maybeSingle();
+          const { data: res, error } = await supabase.from('couple_profile').select('*').order('updated_at', { ascending: false }).limit(1).maybeSingle();
           if (error) throw error;
           return res;
         },
@@ -261,7 +261,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const data = await apiGovernance.fetchWithGovernance(
         'app_settings',
         async () => {
-          const { data: res, error } = await supabase.from('settings').select('*').limit(1).maybeSingle();
+          const { data: res, error } = await supabase.from('settings').select('*').order('updated_at', { ascending: false }).limit(1).maybeSingle();
           if (error) throw error;
           return res;
         },
@@ -404,12 +404,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
           
           const fetchPromise = Promise.allSettled([
             apiGovernance.fetchWithGovernance('app_couple_profile', async () => {
-              const { data, error } = await supabase.from('couple_profile').select('*').limit(1).maybeSingle();
+              const { data, error } = await supabase.from('couple_profile').select('*').order('updated_at', { ascending: false }).limit(1).maybeSingle();
               if (error) throw error;
               return data;
             }, { ttl: 300000 }),
             apiGovernance.fetchWithGovernance('app_settings', async () => {
-              const { data, error } = await supabase.from('settings').select('*').limit(1).maybeSingle();
+              const { data, error } = await supabase.from('settings').select('*').order('updated_at', { ascending: false }).limit(1).maybeSingle();
               if (error) throw error;
               return data;
             }, { ttl: 300000 })
