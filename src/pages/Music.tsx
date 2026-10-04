@@ -21,8 +21,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
-import { supabase } from '../lib/supabase';
-import { apiGovernance } from '../lib/api-governance';
+import { songRepository } from '../data/repositories/song/SongRepository';
 
 // ============================================================================
 // 1. DATA TYPES & DEFAULT DATA (Strictly Preserved Schema)
