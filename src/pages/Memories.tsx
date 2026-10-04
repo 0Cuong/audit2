@@ -28,8 +28,8 @@ import {
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { supabase } from '../lib/supabase';
-import { apiGovernance } from '../lib/api-governance';
 import { formatDateLocale } from '../lib/dateUtils';
+import { memoryRepository } from '../data/repositories/memory/MemoryRepository';
 
 /* ==========================================================================
    1. TYPES & DATA MODEL
