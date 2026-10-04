@@ -168,4 +168,3 @@ export default function App() {
     </BrowserRouter>
   );
 }
-// Route composition lives in src/app/AppRoutes.tsx for the next migration step.
