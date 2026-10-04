@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [main]
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: audit2-ci-${{ github.ref }}
   cancel-in-progress: true
@@ -21,20 +21,7 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
-      - run: npm install --no-audit --no-fund
-      - name: Bootstrap package-lock.json from the existing CI dependency graph
-        if: github.event_name == 'push'
-        shell: bash
-        run: |
-          if [ -f package-lock.json ]; then
-            echo "package-lock.json already exists"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package-lock.json
-          git commit -m "chore: add npm lockfile"
-          git push origin HEAD:refs/heads/generated/audit2-lockfile
+      - run: npm ci --no-audit --no-fund
       - run: npm run skills:check
       - run: npm test
       - run: npm run typecheck
@@ -54,7 +41,7 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
-      - run: npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
       - run: npx wrangler@latest d1 migrations apply DB --remote
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
