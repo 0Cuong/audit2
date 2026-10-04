@@ -1,5 +1,3 @@
-import { isSupabaseConfigured } from './supabase';
-
 type RequestKey = string;
 
 interface CacheEntry<T> {
@@ -10,16 +8,16 @@ interface CacheEntry<T> {
 }
 
 interface GovernanceConfig {
-  ttl?: number; // Cache time-to-live in ms
+  ttl?: number;
   retries?: number;
   baseDelay?: number;
   maxDelay?: number;
   concurrency?: number;
-  minSpacing?: number; // Minimum ms between requests of the same key
+  minSpacing?: number;
 }
 
 const DEFAULT_CONFIG: GovernanceConfig = {
-  ttl: 5 * 60 * 1000, // 5 minutes default
+  ttl: 5 * 60 * 1000,
   retries: 3,
   baseDelay: 500,
   maxDelay: 5000,
@@ -32,9 +30,6 @@ class RequestGovernanceLayer {
   private queue: Array<() => void> = [];
   private lastRequestTime = new Map<RequestKey, number>();
 
-  /**
-   * Exponential backoff with jitter and Retry-After support
-   */
   private async delay(attempt: number, retryAfterHeader?: string | null) {
     if (retryAfterHeader) {
       const parsed = parseInt(retryAfterHeader, 10);
@@ -50,9 +45,6 @@ class RequestGovernanceLayer {
     await new Promise((resolve) => setTimeout(resolve, exponential + jitter));
   }
 
-  /**
-   * Concurrency Limiter
-   */
   private async acquireConcurrencyLimit(maxConcurrent = 4) {
     if (this.activeRequests < maxConcurrent) {
       this.activeRequests++;
@@ -74,9 +66,6 @@ class RequestGovernanceLayer {
     }
   }
 
-  /**
-   * Fetch with Governance: Cache, Deduplication, Retry, Stale-While-Revalidate
-   */
   public async fetchWithGovernance<T>(
     key: RequestKey,
     fetcher: (signal: AbortSignal) => Promise<T>,
@@ -86,17 +75,12 @@ class RequestGovernanceLayer {
     const entry = this.cache.get(key);
     const now = Date.now();
 
-    // 1. In-flight Deduplication
-    if (entry?.promise) {
-      return entry.promise;
-    }
+    if (entry?.promise) return entry.promise;
 
-    // 2. Cache Return (Stale-while-revalidate or fresh)
     if (entry && finalConfig.ttl && now - entry.timestamp < finalConfig.ttl) {
       return entry.data;
     }
 
-    // 3. Minimum spacing logic (e.g., Nominatim)
     if (finalConfig.minSpacing) {
       const lastReq = this.lastRequestTime.get(key) || 0;
       const timeSinceLast = now - lastReq;
@@ -117,22 +101,16 @@ class RequestGovernanceLayer {
           this.lastRequestTime.set(key, Date.now());
 
           const data = await fetcher(abortController.signal);
-          
-          this.cache.set(key, {
-            data,
-            timestamp: Date.now(),
-          });
-          
+
+          this.cache.set(key, { data, timestamp: Date.now() });
           this.releaseConcurrencyLimit();
           return data;
         } catch (error: any) {
           this.releaseConcurrencyLimit();
-          
-          // Don't retry AbortError or Validation errors (400, 403, 404)
+
           if (
-            error.name === 'AbortError' || 
-            (error.status && error.status >= 400 && error.status < 500 && error.status !== 429) ||
-            !isSupabaseConfigured // Offline mode short-circuit
+            error.name === 'AbortError' ||
+            (error.status && error.status >= 400 && error.status < 500 && error.status !== 429)
           ) {
             throw error;
           }
@@ -141,18 +119,13 @@ class RequestGovernanceLayer {
           attempt++;
 
           if (attempt <= (finalConfig.retries || 0)) {
-            // Check for Retry-After header if the error includes response headers
             const retryAfter = error.response?.headers?.get('Retry-After') || error.headers?.['retry-after'];
             await this.delay(attempt, retryAfter);
           }
         }
       }
 
-      // If we fall through and have stale cache, return it rather than failing
-      if (entry?.data) {
-        return entry.data;
-      }
-
+      if (entry?.data) return entry.data;
       throw lastError;
     })();
 
@@ -163,15 +136,11 @@ class RequestGovernanceLayer {
     });
 
     try {
-      const data = await promise;
-      return data;
+      return await promise;
     } finally {
       const currentEntry = this.cache.get(key);
       if (currentEntry?.promise === promise) {
-        this.cache.set(key, {
-          data: currentEntry.data,
-          timestamp: currentEntry.timestamp,
-        });
+        this.cache.set(key, { data: currentEntry.data, timestamp: currentEntry.timestamp });
       }
     }
   }
