@@ -123,6 +123,7 @@ function corsHeaders(request, env) {
 function withCors(response, request, env) {
   const headers = new Headers(response.headers);
   for (const [key, value] of Object.entries(corsHeaders(request, env))) headers.set(key, value);
+  headers.set("Vary", "Origin");
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
@@ -165,6 +166,37 @@ function hydrateRow(table, row) {
   for (const key of Object.keys(row)) {
     output[key] = schema[key] ? deserializeValue(table, key, row[key]) : row[key];
   }
+
+  // Compatibility aliases for data that originated in the older Supabase schema.
+  if (table === "timeline_events") {
+    if (!output.category) output.category = output.event_type || "custom";
+    if (!output.description) output.description = output.story || "";
+    if (!output.image_url && Array.isArray(output.photos) && output.photos.length) output.image_url = output.photos[0];
+    if (!output.icon) output.icon = output.event_type || "custom";
+    output.is_favorite = Boolean(output.is_favorite);
+  }
+
+  if (table === "memories") {
+    if (!output.media_type) output.media_type = output.category || "photo";
+    if (!Array.isArray(output.collection_ids)) output.collection_ids = [];
+    output.is_favorite = Boolean(output.is_favorite);
+    output.is_pinned = Boolean(output.is_pinned);
+  }
+
+  if (table === "journal_entries") {
+    if (!output.title) output.title = "";
+    if (!output.type) output.type = "memory";
+    if (!output.mood) output.mood = "peaceful";
+    if (!Array.isArray(output.tags)) output.tags = [];
+    if (!output.metadata || typeof output.metadata !== "object") output.metadata = {};
+    output.is_favorite = Boolean(output.is_favorite);
+    output.is_pinned = Boolean(output.is_pinned);
+  }
+
+  if (table === "anniversaries" && !output.type) {
+    output.type = output.anniversary_type || "yearly";
+  }
+
   return output;
 }
 
@@ -344,7 +376,9 @@ async function handleData(request, env) {
     if (body.action === "delete") return json(await deleteRows(env, body));
     return json(apiError("Unsupported action"), 400);
   } catch (err) {
-    return json(apiError(err?.message || "Database operation failed", 500, "D1_ERROR"), 500);
+    const message = err?.message || "Database operation failed";
+    const status = /Unknown columns|Invalid column|Unsupported action|Unsupported filter|payload|filter/i.test(message) ? 400 : 500;
+    return json(apiError(message, status, status === 400 ? "INVALID_REQUEST" : "D1_ERROR"), status);
   }
 }
 
