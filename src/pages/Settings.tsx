@@ -204,9 +204,14 @@ export default function SettingsPage() {
 
   const saveLinks = async () => {
     setIsSavingLinks(true);
+    const previousLinks = settings?.contact_links || [];
     try {
       if (settings?.id && settings.id !== 'default-settings') {
-        await supabase.from('settings').update({ contact_links: contactLinks }).eq('id', settings.id);
+        const { error } = await supabase
+          .from('settings')
+          .update({ contact_links: contactLinks })
+          .eq('id', settings.id);
+        if (error) throw error;
         apiGovernance.invalidate('app_settings');
         await refreshSettings();
       } else {
@@ -215,6 +220,8 @@ export default function SettingsPage() {
       setLinksSaved(true);
       setTimeout(() => setLinksSaved(false), 2000);
     } catch (err) {
+      setContactLinks(previousLinks);
+      setLinksSaved(false);
       console.error('Error updating links:', err);
     } finally {
       setIsSavingLinks(false);
@@ -258,7 +265,11 @@ export default function SettingsPage() {
     try {
       const updatedMode = !settings?.privacy_mode;
       if (settings?.id && settings.id !== 'default-settings') {
-        await supabase.from('settings').update({ privacy_mode: updatedMode }).eq('id', settings.id);
+        const { error } = await supabase
+          .from('settings')
+          .update({ privacy_mode: updatedMode })
+          .eq('id', settings.id);
+        if (error) throw error;
         apiGovernance.invalidate('app_settings');
         await refreshSettings();
       } else {
@@ -275,7 +286,11 @@ export default function SettingsPage() {
     setIsSavingPrivacy(true);
     try {
       if (settings?.id && settings.id !== 'default-settings') {
-        await supabase.from('settings').update({ privacy_password: privacyPassword }).eq('id', settings.id);
+        const { error } = await supabase
+          .from('settings')
+          .update({ privacy_password: privacyPassword })
+          .eq('id', settings.id);
+        if (error) throw error;
         apiGovernance.invalidate('app_settings');
         await refreshSettings();
       } else {
@@ -284,6 +299,7 @@ export default function SettingsPage() {
       setPrivacySaved(true);
       setTimeout(() => setPrivacySaved(false), 2000);
     } catch (err) {
+      setPrivacySaved(false);
       console.error('Error saving password:', err);
     } finally {
       setIsSavingPrivacy(false);
