@@ -124,12 +124,15 @@ export class SupabaseMoodRepository implements IMoodRepository {
       this.cacheData([parsed, ...cached.filter(m => m.id !== optimisticId)]);
       return parsed;
     } catch (e) {
-      return optimisticEntry;
+      this.cacheData(cached);
+      console.error('[Mood] Remote create failed:', e);
+      throw e;
     }
   }
 
   async update(id: string, data: UpdateMoodDTO): Promise<MoodEntryEntity> {
     const cached = this.getCachedData();
+    const previous = [...cached];
     const existingIndex = cached.findIndex(m => m.id === id);
     let optimisticData: MoodEntryEntity | null = null;
     
@@ -170,8 +173,9 @@ export class SupabaseMoodRepository implements IMoodRepository {
       }
       return parsed;
     } catch (e) {
-      if (optimisticData) return optimisticData;
-      throw new Error('Mood entry not found');
+      this.cacheData(previous);
+      console.error('[Mood] Remote update failed:', e);
+      throw e;
     }
   }
 
@@ -192,7 +196,9 @@ export class SupabaseMoodRepository implements IMoodRepository {
       apiGovernance.invalidate('repo_mood_all');
 
     } catch (e) {
-      console.warn('Failed to delete from Supabase, deleted locally only', e);
+      this.cacheData(cached);
+      console.error('[Mood] Remote delete failed:', e);
+      throw e;
     }
   }
 
