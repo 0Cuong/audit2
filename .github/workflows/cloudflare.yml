@@ -40,7 +40,7 @@ jobs:
             echo "No lockfile changes to commit"
           else
             git commit -m "chore: add npm lockfile"
-            git push origin HEAD:${{ github.head_ref }}
+            git push origin HEAD:refs/heads/generated/audit2-lockfile
           fi
       - name: Verify clean npm ci from committed lockfile
         shell: bash
