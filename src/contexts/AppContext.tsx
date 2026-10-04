@@ -285,7 +285,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateProfile = useCallback(async (updates: Partial<CoupleProfile>): Promise<UpdateProfileResult> => {
-    // 1. Optimistically apply updates to local state and storage
+    // Keep an exact rollback snapshot so a failed remote mutation never masquerades as saved state.
+    const previous = profile;
+    const rollback = () => {
+      setProfileState(previous);
+      safeSetStorage('cuongisme_profile', previous);
+    };
+
     const updated = { ...profile, ...updates } as CoupleProfile;
     setProfileState(updated);
     safeSetStorage('cuongisme_profile', updated);
@@ -312,6 +318,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         if (error) {
           console.error('[AppContext] Supabase couple_profile update error:', error);
+          rollback();
           return { success: false, error: error.message };
         }
         remoteRecord = data as CoupleProfile;
@@ -325,6 +332,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         if (findError) {
           console.error('[AppContext] Failed to verify couple_profile existence:', findError);
+          rollback();
           return { success: false, error: findError.message };
         }
 
@@ -338,6 +346,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
           if (error) {
             console.error('[AppContext] Failed to update existing couple_profile:', error);
+            rollback();
             return { success: false, error: error.message };
           }
           remoteRecord = data as CoupleProfile;
@@ -358,6 +367,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
           if (error) {
             console.error('[AppContext] Failed to insert initial couple_profile:', error);
+            rollback();
             return { success: false, error: error.message };
           }
           remoteRecord = data as CoupleProfile;
@@ -373,6 +383,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return { success: true, error: null };
     } catch (err: any) {
       console.error('[AppContext] Network / unexpected error updating couple_profile:', err);
+      rollback();
       return { success: false, error: err?.message || 'Network error updating profile' };
     }
   }, [profile]);
