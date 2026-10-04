@@ -23,6 +23,8 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build
+      - name: Validate PostgreSQL backup parser
+        run: DRY_RUN=1 node scripts/recover-postgres-backup-to-cloudflare.mjs
 
   deploy:
     name: Deploy to Cloudflare
