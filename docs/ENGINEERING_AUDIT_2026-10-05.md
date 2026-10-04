@@ -20,9 +20,13 @@ The recent history shows deliberate cleanup: historical root fix scripts were re
 ### Fixed in this change
 - CI run 106 failed at lint because `worker/schema.js` exported `TABLES` twice. The duplicate export was removed while preserving the newer centralized `worker/modules/storage-constants.js` bucket definition.
 
+### Resolved in the current production-guards branch
+- CORS no longer reflects arbitrary origins. Same-origin requests remain valid; cross-origin requests require an exact `CORS_ORIGIN` allowlist. Wildcard `*` is rejected by the parser.
+- `wrangler.json` defaults `CORS_ORIGIN` to an empty same-origin-only policy. Cross-origin clients must explicitly configure trusted origins.
+
 ### Release blockers / follow-ups
 - No package lockfile is tracked. CI uses mutable `npm install`, reducing reproducibility.
-- `wrangler.json` contains a placeholder D1 database ID and wildcard CORS configuration.
+- `wrangler.json` still contains a placeholder D1 database ID. It no longer uses wildcard CORS; the default is same-origin only.
 - The worker data and storage write/read APIs have no application authentication or tenant isolation. The API should not be treated as a production security boundary until this is designed and verified.
 - The default development command intentionally uses `recovery-server.mjs`; direct Vite remains available as `npm run dev:vite`.
 - Recovery artifacts are large but must remain intact until migration is independently verified; this audit does not delete or relocate them.
