@@ -20,6 +20,7 @@ jobs:
           node-version: 24
           package-manager-cache: false
       - run: npm install --no-audit --no-fund
+      - run: npm run skills:check
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build

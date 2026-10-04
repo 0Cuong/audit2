@@ -122,6 +122,3 @@ export const TABLES = {
   }
 };
 
-const BUCKETS = new Set(["avatars", "memories", "photos", "assets"]);
-
-export { TABLES, BUCKETS };
