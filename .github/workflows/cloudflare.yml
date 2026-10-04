@@ -3,6 +3,8 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  pull_request:
+    branches: [main]
 permissions:
   contents: read
 concurrency:
@@ -21,6 +23,7 @@ jobs:
           package-manager-cache: false
       - run: npm install --no-audit --no-fund
       - run: npm run skills:check
+      - run: npm test
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build
