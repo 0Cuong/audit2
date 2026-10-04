@@ -99,12 +99,15 @@ export class SupabaseLetterRepository implements ILetterRepository {
       this.cacheData([parsed, ...cached]);
       return parsed;
     } catch (e) {
-      return optimisticEntry;
+      this.cacheData(cached);
+      console.error('[Letter] Remote create failed:', e);
+      throw e;
     }
   }
 
   async update(id: string, data: UpdateLetterDTO): Promise<LoveLetterEntity> {
     const cached = this.getCachedData();
+    const previous = [...cached];
     const existingIndex = cached.findIndex(m => m.id === id);
     let optimisticData: LoveLetterEntity | null = null;
     
@@ -137,8 +140,9 @@ export class SupabaseLetterRepository implements ILetterRepository {
       }
       return parsed;
     } catch (e) {
-      if (optimisticData) return optimisticData;
-      throw new Error('Letter entry not found');
+      this.cacheData(previous);
+      console.error('[Letter] Remote update failed:', e);
+      throw e;
     }
   }
 
@@ -159,7 +163,9 @@ export class SupabaseLetterRepository implements ILetterRepository {
       apiGovernance.invalidate('repo_letter_all');
 
     } catch (e) {
-      console.warn('Failed to delete from Supabase, deleted locally only', e);
+      this.cacheData(cached);
+      console.error('[Letter] Remote delete failed:', e);
+      throw e;
     }
   }
 
