@@ -7,47 +7,55 @@ const TABLES = {
   },
   timeline_events: {
     id:"text", couple_id:"text", title:"text", date:"date", event_type:"text", story:"text",
-    photos:"json", location:"text", mood:"text", tags:"json", sort_order:"number", created_at:"text"
+    photos:"json", location:"text", mood:"text", tags:"json", sort_order:"number",
+    description:"text", image_url:"text", category:"text", icon:"text", is_favorite:"boolean",
+    created_at:"text", updated_at:"text"
   },
   memories: {
     id:"text", couple_id:"text", title:"text", category:"text", url:"text", description:"text",
-    is_favorite:"boolean", date:"date", tags:"json", created_at:"text"
+    is_favorite:"boolean", is_pinned:"boolean", date:"date", tags:"json", collection_ids:"json",
+    author_id:"text", author_name:"text", media_type:"text", context:"text", location:"json",
+    metadata:"json", created_at:"text", updated_at:"text"
   },
   love_letters: {
     id:"text", couple_id:"text", title:"text", content:"text", from_partner:"text", to_partner:"text",
     is_draft:"boolean", is_locked:"boolean", scheduled_at:"text", is_future:"boolean",
-    reaction:"text", created_at:"text", delivered_at:"text"
+    reaction:"text", created_at:"text", updated_at:"text", delivered_at:"text"
   },
   journal_entries: {
-    id:"text", couple_id:"text", date:"date", content:"text", mood:"text", photos:"json", created_at:"text"
+    id:"text", couple_id:"text", date:"date", content:"text", mood:"text", photos:"json",
+    title:"text", content_html:"text", type:"text", time:"text", tags:"json",
+    author_id:"text", author_name:"text", author:"text", location:"json", location_name:"text",
+    is_favorite:"boolean", is_pinned:"boolean", metadata:"json", created_at:"text", updated_at:"text"
   },
   mood_entries: {
     id:"text", couple_id:"text", mood:"text", note:"text", partner:"text", date:"date",
-    partner_id:"text", partner_name:"text", intensity:"number", created_at:"text"
+    partner_id:"text", partner_name:"text", intensity:"number", created_at:"text", updated_at:"text"
   },
   bucket_list_items: {
     id:"text", couple_id:"text", title:"text", category:"text", description:"text",
-    is_completed:"boolean", completed_at:"text", image_url:"text", created_at:"text"
+    is_completed:"boolean", completed_at:"text", image_url:"text", created_at:"text", updated_at:"text"
   },
   anniversaries: {
-    id:"text", couple_id:"text", title:"text", date:"date", anniversary_type:"text",
-    recurrence:"text", photo_url:"text", created_at:"text"
+    id:"text", couple_id:"text", title:"text", date:"date", anniversary_type:"text", type:"text",
+    notes:"text", reminder_days:"number", recurrence:"text", photo_url:"text", created_at:"text", updated_at:"text"
   },
   map_locations: {
-    id:"text", couple_id:"text", title:"text", description:"text", latitude:"number",
-    longitude:"number", location_type:"text", photos:"json", memory_id:"text", created_at:"text"
+    id:"text", couple_id:"text", title:"text", description:"text", address:"text", latitude:"number",
+    longitude:"number", location_type:"text", photos:"json", memory_id:"text", created_at:"text", updated_at:"text"
   },
   songs: {
     id:"text", couple_id:"text", title:"text", artist:"text", url:"text",
-    is_favorite:"boolean", is_background:"boolean", created_at:"text"
+    is_favorite:"boolean", is_background:"boolean", artwork_url:"text", created_at:"text", updated_at:"text"
   },
   gifts: {
     id:"text", couple_id:"text", title:"text", description:"text", url:"text", image_url:"text",
     category:"text", occasion:"text", price_range:"text", is_received:"boolean",
-    for_partner:"text", created_at:"text"
+    for_partner:"text", created_at:"text", updated_at:"text"
   },
   messages: {
-    id:"text", couple_id:"text", content:"text", message_type:"text", is_pinned:"boolean", created_at:"text"
+    id:"text", couple_id:"text", content:"text", message_type:"text", is_pinned:"boolean",
+    created_at:"text", updated_at:"text"
   },
   settings: {
     id:"text", couple_id:"text", language:"text", theme:"text", contact_links:"json",
@@ -162,7 +170,10 @@ function hydrateRow(table, row) {
 
 function cleanColumns(table, row) {
   const schema = tableSchema(table);
-  return Object.keys(row || {}).filter((key) => Object.prototype.hasOwnProperty.call(schema, key));
+  const keys = Object.keys(row || {});
+  const unknown = keys.filter((key) => !Object.prototype.hasOwnProperty.call(schema, key));
+  if (unknown.length) throw new Error("Unknown columns for " + table + ": " + unknown.join(", "));
+  return keys;
 }
 
 function buildWhere(table, filters, params) {
