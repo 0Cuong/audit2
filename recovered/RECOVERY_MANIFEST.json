@@ -1,30 +1,59 @@
 {
-  "generated_at": "2026-10-04T20:01:03.528Z",
+  "generated_at": "2026-10-05T03:03:00+07:00",
   "source_project": "recpvczpwybpbbntwnnk",
   "source_url": "https://recpvczpwybpbbntwnnk.supabase.co",
-  "storage": "31 live objects in memories bucket matched repository path/name/size inventory",
+  "db_backup": "db_cluster-03-10-2026@23-05-37.backup",
+  "database_recovery": {
+    "status": "verified",
+    "live_public_row_counts": {
+      "memories": 9,
+      "timeline_events": 2,
+      "journal_entries": 9
+    },
+    "note": "The backup is a plain PostgreSQL SQL cluster dump, not a binary pg_dump archive."
+  },
+  "storage_recovery": {
+    "status": "verified_inventory_and_repository_bytes",
+    "live_buckets": ["memories", "avatars", "photos", "assets"],
+    "live_storage_objects": 31,
+    "repository_storage_objects": 31,
+    "memories_bucket_objects": 31,
+    "repository_path": "recpvczpwybpbbntwnnk.storage (1)/recpvczpwybpbbntwnnk/memories",
+    "note": "All 31 live memories-bucket object names are present in the repository storage tree with matching object sizes."
+  },
   "inline_anniversary_media": [
     {
-      "path": "recovered/anniversaries/24704498-7327-40fc-812c-d5fe51eb04e7.jpg",
-      "blob_sha": "924d1722be364a5f36c23d60d3bbc9310d8332ca"
-    },
-    {
-      "path": "recovered/anniversaries/2538fd50-9ea9-4d57-b8d3-3ed6458019c3.jpg",
-      "blob_sha": "89f837dedafc6a79b17b8c8e3e11408783cd6fcb"
-    },
-    {
+      "id": "7b7e2939-b6b7-42a3-9121-555cba8f259f",
       "path": "recovered/anniversaries/7b7e2939-b6b7-42a3-9121-555cba8f259f.jpg",
-      "blob_sha": "75ac46294a4172147d130641bb026006cd574898"
+      "mime": "image/jpeg",
+      "status": "recovered"
     },
     {
-      "path": "recovered/anniversaries/8cba8636-fe14-417b-98a9-298cf44ed4eb.jpg",
-      "blob_sha": "81096a1e3690c5c279b3ade16dee0680f1d49331"
-    },
-    {
+      "id": "c8ded1f9-614a-48d3-88f0-36885a2d5bb5",
       "path": "recovered/anniversaries/c8ded1f9-614a-48d3-88f0-36885a2d5bb5.jpg",
-      "blob_sha": "271a5519a0a5ef0385ed0e69c37eb5605b34f083"
+      "mime": "image/jpeg",
+      "status": "recovered"
+    },
+    {
+      "id": "8cba8636-fe14-417b-98a9-298cf44ed4eb",
+      "path": "recovered/anniversaries/8cba8636-fe14-417b-98a9-298cf44ed4eb.jpg",
+      "mime": "image/jpeg",
+      "status": "recovered"
+    },
+    {
+      "id": "24704498-7327-40fc-812c-d5fe51eb04e7",
+      "path": "recovered/anniversaries/24704498-7327-40fc-812c-d5fe51eb04e7.jpg",
+      "mime": "image/webp",
+      "status": "recovered_bytes_but_extension_is_jpg",
+      "note": "The source data URI begins with UklGR, which identifies a WebP RIFF payload. Do not treat this file as JPEG merely because its current filename ends in .jpg."
+    },
+    {
+      "id": "2538fd50-9ea9-4d57-b8d3-3ed6458019c3",
+      "path": "recovered/anniversaries/2538fd50-9ea9-4d57-b8d3-3ed6458019c3.jpg",
+      "mime": "image/jpeg",
+      "status": "recovered"
     }
   ],
-  "db_backup": "db_cluster-03-10-2026@23-05-37.backup",
-  "note": "5 anniversary photo_url values were data:image/*;base64 embedded in PostgreSQL and extracted as standalone files."
+  "total_recoverable_media": 36,
+  "important_boundary": "The PostgreSQL backup contains storage.objects metadata, not the binary contents of Supabase Storage. The 31 binary storage files are separately present in the repository storage tree; the 5 anniversary images were embedded as data:image/* base64 in PostgreSQL and were extracted into recovered/anniversaries."
 }
