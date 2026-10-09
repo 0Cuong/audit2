@@ -28,5 +28,5 @@ test("data API rejects a missing Access JWT when configuration exists", async ()
 test("health endpoint remains available for non-sensitive deployment probes", async () => {
   const response = await worker.fetch(new Request("https://audit2.example.com/api/health"), makeEnv());
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { ok: true, backend: "cloudflare-d1-r2" });
+  assert.deepEqual(await response.json(), { ok: true, backend: "cloudflare-d1-kv" });
 });
