@@ -23,8 +23,8 @@ try {
 } catch {
   throw new Error("TARGET_API_URL must be a valid HTTPS URL");
 }
-if (targetUrl.protocol !== "https:" || targetUrl.username || targetUrl.password || targetUrl.search || targetUrl.hash) {
-  throw new Error("TARGET_API_URL must be a clean HTTPS base URL");
+if (targetUrl.protocol !== "https:" || targetUrl.hostname.toLowerCase() !== "formygf.luongminhcuong130.workers.dev" || targetUrl.username || targetUrl.password || targetUrl.search || targetUrl.hash) {
+  throw new Error("For safety, TARGET_API_URL must be https://formygf.luongminhcuong130.workers.dev with no path, query or credentials");
 }
 if (!fs.existsSync(storageRoot) || !fs.statSync(storageRoot).isDirectory()) {
   throw new Error("Storage export folder not found or is not a directory: " + storageRoot);
