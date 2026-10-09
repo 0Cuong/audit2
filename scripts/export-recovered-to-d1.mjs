@@ -79,7 +79,7 @@ for (const [table, info] of Object.entries(tablesData)) {
     const colNames = colsInRow.map((c) => `"${c}"`).join(", ");
     const colValues = colsInRow.map((c) => serializeForD1(table, c, row, row[c])).join(", ");
 
-    statements.push(`INSERT OR REPLACE INTO "${table}" (${colNames}) VALUES (${colValues});`);
+    statements.push(`INSERT OR IGNORE INTO "${table}" (${colNames}) VALUES (${colValues});`);
     totalRows++;
   }
 }
