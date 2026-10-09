@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  detectMediaContentTypeFromBytes,
   inferMediaContentType,
   normalizeMediaReferences,
   resolveMediaContentType
@@ -42,4 +43,13 @@ test("replaces generic imported MIME metadata using the media path", () => {
 test("does not infer active document MIME types", () => {
   assert.equal(inferMediaContentType("assets/index.html"), null);
   assert.equal(inferMediaContentType("assets/vector.svg"), null);
+});
+
+test("detects WebP bytes even when the filename and stored MIME say JPEG", () => {
+  const webpHeader = Uint8Array.from([
+    0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00,
+    0x57, 0x45, 0x42, 0x50
+  ]);
+  assert.equal(detectMediaContentTypeFromBytes(webpHeader), "image/webp");
+  assert.equal(resolveMediaContentType("image/jpeg", "photos/recovered.jpg", webpHeader), "image/webp");
 });
