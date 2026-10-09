@@ -479,7 +479,13 @@ export default {
 
     const url = new URL(request.url);
     if (url.pathname.startsWith("/api/")) {
-      if (url.pathname !== "/api/health") {
+      // These routes only serve media that historically came from Supabase public-storage URLs.
+      // Keep public access read-only; all data, upload, delete and admin APIs still require Access.
+      const isPublicMediaRead = request.method === "GET" && (
+        url.pathname.startsWith("/api/media/") ||
+        url.pathname.startsWith("/api/recovered/anniversaries/")
+      );
+      if (url.pathname !== "/api/health" && !isPublicMediaRead) {
         const identity = await verifyCloudflareAccess(request, env);
         if (!identity.ok) {
           const status = identity.status || 401;
