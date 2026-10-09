@@ -9,9 +9,18 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 const dbPath = path.join(root, 'recovered', 'database.json');
 const storageRoot = path.join(root, 'recpvczpwybpbbntwnnk.storage (1)', 'recpvczpwybpbbntwnnk', 'memories');
 const annRoot = path.join(root, 'recovered', 'anniversaries');
-let db = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+let db;
+try {
+  db = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+  if (!db || typeof db !== 'object' || !db.tables || typeof db.tables !== 'object') throw new Error('Invalid recovery database shape');
+} catch (error) {
+  if (error?.code !== 'ENOENT' && !/Invalid recovery database shape/.test(error?.message || '')) throw error;
+  db = { source_backup: null, tables: {} };
+  console.warn('[Recovery] Private recovered/database.json is missing. Starting in empty local mode; recovered user data has not been restored.');
+}
 
 function saveDb(){
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   const tmpPath = dbPath + '.tmp';
   const serialized = JSON.stringify(db, null, 2);
   fs.writeFileSync(tmpPath, serialized, 'utf8');
