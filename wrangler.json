@@ -11,7 +11,7 @@
     {
       "binding": "DB",
       "database_name": "audit2-db",
-      "database_id": "REPLACE_WITH_AUTHORITATIVE_D1_DATABASE_ID",
+      "database_id": "ad79df12-068a-43b4-ba8c-76f8d91e00e6",
       "migrations_dir": "migrations"
     }
   ],
