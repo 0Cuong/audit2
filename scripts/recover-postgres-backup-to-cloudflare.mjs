@@ -5,12 +5,18 @@ const repoRoot = process.cwd();
 const backupPath = path.resolve(process.env.DB_BACKUP_PATH || path.join(repoRoot, "db_cluster-03-10-2026@23-05-37.backup"));
 const target = String(process.env.TARGET_API_URL || "").replace(/\/+$/, "");
 const secret = process.env.IMPORT_SECRET || "";
+const accessClientId = process.env.CF_ACCESS_CLIENT_ID || "";
+const accessClientSecret = process.env.CF_ACCESS_CLIENT_SECRET || "";
+const accessHeaders = accessClientId && accessClientSecret
+  ? { "CF-Access-Client-Id": accessClientId, "CF-Access-Client-Secret": accessClientSecret }
+  : {};
 const storageRoot = process.env.STORAGE_DUMP_PATH ? path.resolve(process.env.STORAGE_DUMP_PATH) : null;
 const dryRun = process.env.DRY_RUN === "1";
 
 if (!fs.existsSync(backupPath)) throw new Error("Backup file not found: " + backupPath);
-if (!dryRun && (!target || !secret)) {
-  throw new Error("Set TARGET_API_URL and IMPORT_SECRET for a live recovery. Use DRY_RUN=1 for inspection only.");
+if (Boolean(accessClientId) !== Boolean(accessClientSecret)) throw new Error("Set both CF_ACCESS_CLIENT_ID and CF_ACCESS_CLIENT_SECRET");
+if (!dryRun && (!target || !secret || !accessClientId || !accessClientSecret)) {
+  throw new Error("Set TARGET_API_URL, IMPORT_SECRET and the Cloudflare Access service-token pair. Use DRY_RUN=1 for inspection only.");
 }
 
 const SUPPORTED_TABLES = [
@@ -132,7 +138,7 @@ function parseDump(sql) {
 async function importTable(table, rows) {
   const response = await fetch(target + "/api/admin/import/table", {
     method: "POST",
-    headers: { "content-type": "application/json", "X-Import-Secret": secret },
+    headers: { "content-type": "application/json", "X-Import-Secret": secret, ...accessHeaders },
     body: JSON.stringify({
       table,
       rows,
@@ -178,7 +184,7 @@ async function importStorage(root) {
     form.append("file", new Blob([buffer], { type: "application/octet-stream" }), path.basename(object.file));
     const response = await fetch(target + "/api/admin/import/storage", {
       method: "POST",
-      headers: { "X-Import-Secret": secret },
+      headers: { "X-Import-Secret": secret, ...accessHeaders },
       body: form
     });
     if (!response.ok) throw new Error("Import storage " + object.bucket + "/" + object.objectPath + " failed: HTTP " + response.status);
@@ -188,6 +194,7 @@ async function importStorage(root) {
 
 const sql = fs.readFileSync(backupPath, "utf8");
 const tables = parseDump(sql);
+if (tables.size === 0) throw new Error("No supported PostgreSQL COPY tables were found in the backup input");
 const summary = Object.fromEntries([...tables].map(([table, data]) => [table, data.rows.length]));
 console.log(JSON.stringify({ backup: path.basename(backupPath), tables: summary, dryRun }, null, 2));
 
