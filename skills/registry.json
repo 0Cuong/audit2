@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "checked_at": "2026-10-05",
+  "local": [
+    "core/repository-audit",
+    "core/skill-router",
+    "quality/verification",
+    "security/external-skill-review",
+    "frontend/anti-slop-frontend",
+    "frontend/visual-qa",
+    "research/github-skill-discovery"
+  ],
+  "external": [
+    {
+      "name": "design-taste-frontend",
+      "source": "Leonxlnx/taste-skill",
+      "url": "https://github.com/Leonxlnx/taste-skill",
+      "category": "frontend/design",
+      "license": "MIT",
+      "compatibility": "portable Agent Skills",
+      "quality": "strong anti-slop guidance",
+      "maintenance": "active at checked commit",
+      "last_checked": "2026-10-05",
+      "status": "verified",
+      "reason": "Upstream SKILL.md and MIT license inspected; useful design-read and anti-default principles are adapted locally.",
+      "source_commit": "ce26fc25c0e5e8cab638f883de62d9a86ee5e45b"
+    },
+    {
+      "name": "design-systems-to-agent-skills",
+      "source": "vercel-labs/design-systems-to-agent-skills",
+      "url": "https://github.com/vercel-labs/design-systems-to-agent-skills",
+      "category": "design-systems/agent-workflow",
+      "license": "MIT",
+      "compatibility": "Claude/Codex/OpenCode/generic agents",
+      "quality": "strong staged workflow",
+      "maintenance": "active at checked commit",
+      "last_checked": "2026-10-05",
+      "status": "adapted",
+      "reason": "Adapted its staged/progressive skill architecture without importing its command suite.",
+      "source_commit": "0e541bc7a8eb8e86e6b1c93fac7cf21588d487da"
+    },
+    {
+      "name": "web-interface-guidelines",
+      "source": "vercel-labs/web-interface-guidelines",
+      "url": "https://github.com/vercel-labs/web-interface-guidelines",
+      "category": "quality/accessibility/performance",
+      "license": "MIT",
+      "compatibility": "framework-agnostic + React/Next guidance",
+      "quality": "strong and concrete",
+      "maintenance": "active",
+      "last_checked": "2026-10-05",
+      "status": "adapted",
+      "reason": "Adapted keyboard, focus, reduced-motion, responsive, overflow, and performance checks.",
+      "source_commit": "e3d624baaf29dc1fc645aff3e8f03e564d2d6b1"
+    },
+    {
+      "name": "frontend-ai-skills",
+      "source": "JustineBijuPaul/frontend-ai-skills",
+      "url": "https://github.com/JustineBijuPaul/frontend-ai-skills",
+      "category": "frontend/animation/3d/quality",
+      "license": "MIT",
+      "compatibility": "multiple coding agents",
+      "quality": "broad catalog; lower ecosystem evidence",
+      "maintenance": "active",
+      "last_checked": "2026-10-05",
+      "status": "experimental",
+      "reason": "Useful breadth, but this project only needs a small curated subset; do not vendor all skills yet.",
+      "source_commit": "main"
+    },
+    {
+      "name": "vercel-agent-skills",
+      "source": "vercel-labs/agent-skills",
+      "url": "https://github.com/vercel-labs/agent-skills",
+      "category": "agent-runtime",
+      "license": "not relied on for copied content",
+      "compatibility": "multiple agents",
+      "quality": "strong skill-authoring conventions",
+      "maintenance": "active",
+      "last_checked": "2026-10-05",
+      "status": "investigate-later",
+      "reason": "Used as authoring reference only; no source files copied into audit2.",
+      "source_commit": "main"
+    },
+    {
+      "name": "openai-skills-catalog",
+      "source": "openai/skills",
+      "url": "https://github.com/openai/skills",
+      "category": "agent-runtime",
+      "license": "mixed/per-skill review required",
+      "compatibility": "Codex-oriented history",
+      "quality": "historical reference",
+      "maintenance": "deprecated catalog",
+      "last_checked": "2026-10-05",
+      "status": "rejected",
+      "reason": "Not adopted because that catalog is deprecated; current portable skill conventions are preferred."
+    }
+  ]
+}

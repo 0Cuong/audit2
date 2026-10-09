@@ -1,0 +1,190 @@
+import { supabase, isSupabaseConfigured } from '../../../lib/supabase';
+import { apiGovernance } from '../../../lib/api-governance';
+import { TimelineEventEntity, TimelineEventSchema } from '../../schemas/timeline';
+import { BaseRepository } from '../core/BaseRepository';
+import { z } from 'zod';
+
+export type CreateTimelineDTO = Omit<TimelineEventEntity, 'id' | 'created_at'>;
+export type UpdateTimelineDTO = Partial<CreateTimelineDTO>;
+
+export type ITimelineRepository = BaseRepository<TimelineEventEntity, CreateTimelineDTO, UpdateTimelineDTO>;
+
+export class SupabaseTimelineRepository implements ITimelineRepository {
+  private static readonly TABLE = 'timeline_events';
+  private static readonly STORAGE_KEY = 'cuongisme_timeline_v2';
+
+  async findAll(): Promise<TimelineEventEntity[]> {
+    if (!isSupabaseConfigured) {
+      return this.getCachedData();
+    }
+
+    try {
+      const data = await apiGovernance.fetchWithGovernance<any[]>(
+        'repo_timeline_all',
+        async () => {
+          const { data: resData, error } = await supabase
+            .from(SupabaseTimelineRepository.TABLE)
+            .select('*')
+            .order('date', { ascending: false });
+      if (error) throw error;
+              return resData || [];
+        },
+        { ttl: 300000 }
+      );
+
+      if (!data) return [];
+
+      const parsed = z.array(TimelineEventSchema).safeParse(data);
+      if (parsed.success) {
+        this.cacheData(parsed.data);
+        return parsed.data;
+      }
+      return data as TimelineEventEntity[];
+    } catch (e) {
+      console.warn('Supabase timeline fetch failed, using local cache:', e);
+      return this.getCachedData();
+    }
+  }
+
+  async findById(id: string): Promise<TimelineEventEntity | null> {
+    if (!isSupabaseConfigured) {
+      const cached = this.getCachedData();
+      return cached.find(m => m.id === id) || null;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from(SupabaseTimelineRepository.TABLE)
+        .select('*')
+        .eq('id', id)
+        .single();
+      if (error) throw error;
+        
+      if (!data) return null;
+      
+      const parsed = TimelineEventSchema.safeParse(data);
+      return parsed.success ? parsed.data : data as TimelineEventEntity;
+    } catch (e) {
+      const cached = this.getCachedData();
+      return cached.find(m => m.id === id) || null;
+    }
+  }
+
+  async create(data: CreateTimelineDTO): Promise<TimelineEventEntity> {
+    const optimisticId = `local-${Date.now()}`;
+    const optimisticEntry: TimelineEventEntity = { ...data, id: optimisticId };
+    
+    const cached = this.getCachedData();
+    this.cacheData([optimisticEntry, ...cached]);
+
+    if (!isSupabaseConfigured) {
+      return optimisticEntry;
+    }
+
+    try {
+      const { data: created, error } = await supabase
+        .from(SupabaseTimelineRepository.TABLE)
+        .insert(data)
+        .select()
+        .single();
+      if (error) throw error;
+      apiGovernance.invalidate('repo_timeline_all');
+
+      
+      const parsed = TimelineEventSchema.parse(created);
+      this.cacheData([parsed, ...cached]);
+      return parsed;
+    } catch (e) {
+      this.cacheData(cached);
+      console.error('[Timeline] Remote create failed:', e);
+      throw e;
+    }
+  }
+
+  async update(id: string, data: UpdateTimelineDTO): Promise<TimelineEventEntity> {
+    const cached = this.getCachedData();
+    const previous = [...cached];
+    const existingIndex = cached.findIndex(m => m.id === id);
+    let optimisticData: TimelineEventEntity | null = null;
+    
+    if (existingIndex >= 0) {
+      optimisticData = { ...cached[existingIndex], ...data };
+      cached[existingIndex] = optimisticData;
+      this.cacheData([...cached]);
+    }
+
+    if (!isSupabaseConfigured) {
+      if (optimisticData) return optimisticData;
+      throw new Error('Timeline event not found');
+    }
+
+    try {
+      const { data: updated, error } = await supabase
+        .from(SupabaseTimelineRepository.TABLE)
+        .update(data)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      apiGovernance.invalidate('repo_timeline_all');
+
+      const parsed = TimelineEventSchema.parse(updated);
+      
+      if (existingIndex >= 0) {
+        cached[existingIndex] = parsed;
+        this.cacheData([...cached]);
+      }
+      return parsed;
+    } catch (e) {
+      this.cacheData(previous);
+      console.error('[Timeline] Remote update failed:', e);
+      throw e;
+    }
+  }
+
+  async delete(id: string): Promise<void> {
+    const cached = this.getCachedData();
+    this.cacheData(cached.filter(m => m.id !== id));
+
+    if (!isSupabaseConfigured) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from(SupabaseTimelineRepository.TABLE)
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+      apiGovernance.invalidate('repo_timeline_all');
+
+    } catch (e) {
+      this.cacheData(cached);
+      console.error('[Timeline] Remote delete failed:', e);
+      throw e;
+    }
+  }
+
+  private getCachedData(): TimelineEventEntity[] {
+    try {
+      const data = localStorage.getItem(SupabaseTimelineRepository.STORAGE_KEY);
+      if (!data) return [];
+      const parsed = JSON.parse(data);
+      const validated = z.array(TimelineEventSchema).safeParse(parsed);
+      if (validated.success) return validated.data;
+      return parsed as TimelineEventEntity[];
+    } catch {
+      return [];
+    }
+  }
+
+  private cacheData(data: TimelineEventEntity[]): void {
+    try {
+      localStorage.setItem(SupabaseTimelineRepository.STORAGE_KEY, JSON.stringify(data));
+    } catch {
+      // Storage quota or access blocked
+    }
+  }
+}
+
+export const timelineRepository = new SupabaseTimelineRepository();
