@@ -2,6 +2,7 @@ import { TABLES } from "./schema.js";
 
 
 import { BUCKETS } from "./modules/storage-constants.js";
+import { normalizeMediaReferences, resolveMediaContentType } from "./modules/media-utils.js";
 import { buildCorsHeaders, isCorsOriginAllowed } from "./cors.js";
 import { verifyCloudflareAccess, isAdminAccessIdentity } from "./access-auth.js";
 
@@ -80,7 +81,8 @@ function hydrateRow(table, row) {
   const schema = tableSchema(table);
   const output = {};
   for (const key of Object.keys(row)) {
-    output[key] = schema[key] ? deserializeValue(table, key, row[key]) : row[key];
+    const value = schema[key] ? deserializeValue(table, key, row[key]) : row[key];
+    output[key] = normalizeMediaReferences(value);
   }
 
   // Compatibility aliases for data that originated in the older Supabase schema.
@@ -337,7 +339,7 @@ async function handleStorage(request, env, pathname) {
     if (!stored.value) return new Response("Not Found", { status: 404 });
     const headers = new Headers();
     for (const [name, value] of Object.entries(mediaSecurityHeaders())) headers.set(name, value);
-    headers.set("content-type", stored.metadata?.contentType || "application/octet-stream");
+    headers.set("content-type", resolveMediaContentType(stored.metadata?.contentType, path));
     if (stored.metadata?.etag) headers.set("etag", stored.metadata.etag);
     return new Response(stored.value, { status: 200, headers });
   }
@@ -438,7 +440,7 @@ async function handleRecoveredAnniversary(request, env, pathname) {
     const extension = filename.split(".").pop().toLowerCase();
     const headers = new Headers(mediaSecurityHeaders());
     if (stored.metadata?.etag) headers.set("etag", stored.metadata.etag);
-    headers.set("content-type", stored.metadata?.contentType || fallbackTypes[extension] || "application/octet-stream");
+    headers.set("content-type", resolveMediaContentType(stored.metadata?.contentType, filename) || fallbackTypes[extension] || "application/octet-stream");
     return new Response(stored.value, { status: 200, headers });
   }
   return json(apiError("Recovered media not found in KV", 404, "MEDIA_NOT_FOUND"), 404);
