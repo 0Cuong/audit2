@@ -15,13 +15,13 @@
       "migrations_dir": "migrations"
     }
   ],
-  "r2_buckets": [
-    {
-      "binding": "MEDIA",
-      "bucket_name": "audit2-media"
-    }
-  ],
   "vars": {
     "CORS_ORIGIN": ""
-  }
+  },
+  "kv_namespaces": [
+    {
+      "binding": "MEDIA",
+      "id": "7e363a2452a247c4a96162798758005a"
+    }
+  ]
 }
