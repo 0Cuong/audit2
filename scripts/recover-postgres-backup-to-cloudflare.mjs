@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { inferMediaContentType } from "../worker/modules/media-utils.js";
 
 const repoRoot = process.cwd();
 const backupPath = path.resolve(process.env.DB_BACKUP_PATH || path.join(repoRoot, "db_cluster-03-10-2026@23-05-37.backup"));
@@ -209,7 +210,7 @@ async function importStorage(root) {
     const buffer = fs.readFileSync(object.file);
     form.append("bucket", object.bucket);
     form.append("path", object.objectPath);
-    form.append("file", new Blob([buffer], { type: "application/octet-stream" }), path.basename(object.file));
+    form.append("file", new Blob([buffer], { type: inferMediaContentType(object.objectPath) || "application/octet-stream" }), path.basename(object.file));
     const response = await fetch(target + "/api/admin/import/storage", {
       method: "POST",
       headers: { "X-Import-Secret": secret, ...accessHeaders },
