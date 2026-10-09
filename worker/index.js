@@ -401,7 +401,7 @@ async function handleAdminImport(request, env) {
     const file = form.get("file");
 
     if (!BUCKETS.has(bucket) || !(file instanceof File)) return json(apiError("Invalid storage upload"), 400);
-    if (file.size > MAX_UPLOAD_BYTES) return json(apiError("File exceeds the 50 MiB upload limit", 413, "UPLOAD_TOO_LARGE"), 413);
+    if (file.size > MAX_UPLOAD_BYTES) return json(apiError("File exceeds the 20 MiB limit for free-tier KV media storage", 413, "UPLOAD_TOO_LARGE"), 413);
     const contentType = safeUploadContentType(file);
     if (!contentType) return json(apiError("Active document content types are not accepted", 415, "UNSAFE_MEDIA_TYPE"), 415);
     if (!env.MEDIA) return json(apiError("Media KV namespace is not configured", 503, "STORAGE_UNAVAILABLE"), 503);
