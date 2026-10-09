@@ -11,3 +11,7 @@ recpvczpwybpbbntwnnk.storage (1)/
 **/__pycache__/
 *.py[cod]
 *.tsbuildinfo
+
+# Private recovery outputs must never be committed.
+recovered/private/
+*.local.sql
