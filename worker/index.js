@@ -421,14 +421,15 @@ async function handleAdminImport(request, env) {
 }
 
 async function handleRecoveredAnniversary(request, env, pathname) {
-  const match = pathname.match(/^\\/api\\/recovered\\/anniversaries\\/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(?:jpg|jpeg|png|webp))$/i);
+  const match = pathname.match(new RegExp("^/api/recovered/anniversaries/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(?:jpg|jpeg|png|webp))$", "i"));
   if (!match) return json(apiError("Recovered media not found", 404, "MEDIA_NOT_FOUND"), 404);
   if (!env.MEDIA) return json(apiError("Media KV namespace is not configured", 503, "STORAGE_UNAVAILABLE"), 503);
 
   const requestedName = match[1];
   const candidates = [requestedName];
-  if (/\\.jpg$/i.test(requestedName)) candidates.push(requestedName.replace(/\\.jpg$/i, ".webp"));
-  if (/\\.webp$/i.test(requestedName)) candidates.push(requestedName.replace(/\\.webp$/i, ".jpg"));
+  const lowerName = requestedName.toLowerCase();
+  if (lowerName.endsWith(".jpg")) candidates.push(requestedName.slice(0, -4) + ".webp");
+  if (lowerName.endsWith(".webp")) candidates.push(requestedName.slice(0, -5) + ".jpg");
 
   for (const filename of candidates) {
     const stored = await env.MEDIA.getWithMetadata("photos/anniversaries/" + filename, "arrayBuffer");
@@ -448,7 +449,7 @@ async function handleApi(request, env) {
 
   if (url.pathname === "/api/health" && request.method === "GET") {
     const result = await env.DB.prepare("SELECT 1 AS ok").first();
-    return json({ ok: result?.ok === 1, backend: "cloudflare-d1-r2" });
+    return json({ ok: result?.ok === 1, backend: "cloudflare-d1-kv" });
   }
 
   if (url.pathname === "/api/data" && request.method === "POST") return handleData(request, env);
