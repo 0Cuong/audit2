@@ -1,10 +1,27 @@
 {
-  "$schema":"node_modules/wrangler/config-schema.json",
-  "name":"audit2-cuongisme",
-  "main":"worker/index.js",
-  "compatibility_date":"2026-10-02",
-  "assets":{"directory":"./dist","binding":"ASSETS"},
-  "d1_databases":[{"binding":"DB","database_name":"my-db-name","database_id":"ad79df12-068a-43b4-ba8c-76f8d91e00e6","migrations_dir":"migrations"}],
-  "r2_buckets":[{"binding":"MEDIA","bucket_name":"audit2-media"}],
-  "vars":{"CORS_ORIGIN":""}
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "audit2-cuongisme",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-10-02",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "audit2-db",
+      "database_id": "REPLACE_WITH_AUTHORITATIVE_D1_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "audit2-media"
+    }
+  ],
+  "vars": {
+    "CORS_ORIGIN": ""
+  }
 }
