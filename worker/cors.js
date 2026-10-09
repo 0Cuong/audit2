@@ -1,5 +1,5 @@
 const DEFAULT_ALLOWED_HEADERS = "Content-Type, Authorization, X-Import-Secret, X-Audit2-Key";
-const DEFAULT_ALLOWED_METHODS = "GET,POST,PATCH,DELETE,OPTIONS";
+const DEFAULT_ALLOWED_METHODS = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
 
 function parseAllowedOrigins(value) {
   return new Set(

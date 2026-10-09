@@ -5,8 +5,12 @@ const supabaseUrl=(process.env.SUPABASE_URL||"").replace(/\/+$/,"");
 const supabaseKey=process.env.SUPABASE_ANON_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY||"";
 const target=(process.env.TARGET_API_URL||"").replace(/\/+$/,"");
 const secret=process.env.IMPORT_SECRET||"";
+const accessClientId=process.env.CF_ACCESS_CLIENT_ID||"";
+const accessClientSecret=process.env.CF_ACCESS_CLIENT_SECRET||"";
+if(Boolean(accessClientId)!==Boolean(accessClientSecret)) throw new Error("Set both CF_ACCESS_CLIENT_ID and CF_ACCESS_CLIENT_SECRET");
+const accessHeaders=accessClientId?{"CF-Access-Client-Id":accessClientId,"CF-Access-Client-Secret":accessClientSecret}:{};
 
-if(!supabaseUrl||!supabaseKey||!target||!secret){throw new Error("Set SUPABASE_URL, SUPABASE_ANON_KEY (or SUPABASE_SERVICE_ROLE_KEY), TARGET_API_URL and IMPORT_SECRET");}
+if(!supabaseUrl||!supabaseKey||!target||!secret||!accessClientId||!accessClientSecret){throw new Error("Set SUPABASE_URL, SUPABASE_ANON_KEY (or SUPABASE_SERVICE_ROLE_KEY), TARGET_API_URL, IMPORT_SECRET and the Cloudflare Access service-token pair CF_ACCESS_CLIENT_ID/CF_ACCESS_CLIENT_SECRET");}
 const headers={apikey:supabaseKey,Authorization:"Bearer "+supabaseKey};
 
 async function expectOk(response,label){
@@ -37,7 +41,7 @@ async function getRows(table){
 
 async function importTable(table){
   const rows=await getRows(table);
-  const r=await fetch(target+"/api/admin/import/table",{method:"POST",headers:{"content-type":"application/json","X-Import-Secret":secret},body:JSON.stringify({table,rows})});
+  const r=await fetch(target+"/api/admin/import/table",{method:"POST",headers:{"content-type":"application/json","X-Import-Secret":secret,...accessHeaders},body:JSON.stringify({table,rows})});
   await expectOk(r,"Import "+table);
   console.log(table+": "+rows.length);
   return rows.length;
@@ -64,7 +68,7 @@ async function importBucket(bucket){
     const form=new FormData();
     form.append("bucket",bucket);form.append("path",path);
     form.append("file",new Blob([await r.arrayBuffer()],{type:r.headers.get("content-type")||"application/octet-stream"}),path.split("/").pop()||"file");
-    const up=await fetch(target+"/api/admin/import/storage",{method:"POST",headers:{"X-Import-Secret":secret},body:form});
+    const up=await fetch(target+"/api/admin/import/storage",{method:"POST",headers:{"X-Import-Secret":secret,...accessHeaders},body:form});
     await expectOk(up,"Import storage object "+bucket+"/"+path);
     imported++;console.log("uploaded "+bucket+"/"+path);
   }

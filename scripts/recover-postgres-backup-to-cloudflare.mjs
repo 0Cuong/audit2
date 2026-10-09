@@ -5,12 +5,18 @@ const repoRoot = process.cwd();
 const backupPath = path.resolve(process.env.DB_BACKUP_PATH || path.join(repoRoot, "db_cluster-03-10-2026@23-05-37.backup"));
 const target = String(process.env.TARGET_API_URL || "").replace(/\/+$/, "");
 const secret = process.env.IMPORT_SECRET || "";
+const accessClientId = process.env.CF_ACCESS_CLIENT_ID || "";
+const accessClientSecret = process.env.CF_ACCESS_CLIENT_SECRET || "";
+const accessHeaders = accessClientId && accessClientSecret
+  ? { "CF-Access-Client-Id": accessClientId, "CF-Access-Client-Secret": accessClientSecret }
+  : {};
 const storageRoot = process.env.STORAGE_DUMP_PATH ? path.resolve(process.env.STORAGE_DUMP_PATH) : null;
 const dryRun = process.env.DRY_RUN === "1";
 
 if (!fs.existsSync(backupPath)) throw new Error("Backup file not found: " + backupPath);
-if (!dryRun && (!target || !secret)) {
-  throw new Error("Set TARGET_API_URL and IMPORT_SECRET for a live recovery. Use DRY_RUN=1 for inspection only.");
+if (Boolean(accessClientId) !== Boolean(accessClientSecret)) throw new Error("Set both CF_ACCESS_CLIENT_ID and CF_ACCESS_CLIENT_SECRET");
+if (!dryRun && (!target || !secret || !accessClientId || !accessClientSecret)) {
+  throw new Error("Set TARGET_API_URL, IMPORT_SECRET and the Cloudflare Access service-token pair. Use DRY_RUN=1 for inspection only.");
 }
 
 const SUPPORTED_TABLES = [
@@ -109,7 +115,7 @@ function parseValue(column, value) {
 }
 
 function parseDump(sql) {
-  const re = /^COPY public\.([^\s(]+) \(([^)]*)\) FROM stdin;\n([\\s\\S]*?)^\\\.\n/gm;
+  const re = /^COPY public\.([^\s(]+) \(([^)]*)\) FROM stdin;\n([\s\S]*?)^\\\.\n/gm;
   const tables = new Map();
   let match;
   while ((match = re.exec(sql))) {
@@ -129,15 +135,43 @@ function parseDump(sql) {
   return tables;
 }
 
+async function uploadInlineAnniversaryMedia(rows) {
+  const maxBytes = 50 * 1024 * 1024;
+  let uploaded = 0;
+  for (const row of rows) {
+    if (typeof row?.photo_url !== "string" || !row.photo_url.startsWith("data:image/")) continue;
+    const match = row.photo_url.match(/^data:(image\/(?:jpeg|jpg|png|webp));base64,([A-Za-z0-9+/=\r\n]+)$/i);
+    if (!match) throw new Error("Unsupported inline anniversary image for row " + (row.id || "(missing id)"));
+    if (!row.id || !/^[0-9a-f-]{36}$/i.test(String(row.id))) throw new Error("Anniversary media row has an invalid UUID");
+    const mime = match[1].toLowerCase() === "image/jpg" ? "image/jpeg" : match[1].toLowerCase();
+    const extension = mime === "image/webp" ? "webp" : mime === "image/png" ? "png" : "jpg";
+    const bytes = Buffer.from(match[2].replace(/\s/g, ""), "base64");
+    if (!bytes.length || bytes.length > maxBytes) throw new Error("Anniversary image is empty or exceeds 50 MiB");
+    const form = new FormData();
+    form.append("bucket", "photos");
+    form.append("path", "anniversaries/" + row.id + "." + extension);
+    form.append("file", new Blob([bytes], { type: mime }), String(row.id) + "." + extension);
+    const response = await fetch(target + "/api/admin/import/storage", {
+      method: "POST",
+      headers: { "X-Import-Secret": secret, ...accessHeaders },
+      body: form
+    });
+    if (!response.ok) throw new Error("Upload anniversary media failed for row " + row.id + ": HTTP " + response.status);
+    row.photo_url = "/api/recovered/anniversaries/" + row.id + "." + extension;
+    uploaded++;
+  }
+  return uploaded;
+}
+
 async function importTable(table, rows) {
+  if (table === "anniversaries") {
+    const mediaCount = await uploadInlineAnniversaryMedia(rows);
+    if (mediaCount) console.log("anniversaries: uploaded inline media " + mediaCount);
+  }
   const response = await fetch(target + "/api/admin/import/table", {
     method: "POST",
-    headers: { "content-type": "application/json", "X-Import-Secret": secret },
-    body: JSON.stringify({
-      table,
-      rows,
-      mode: "insert-if-missing"
-    })
+    headers: { "content-type": "application/json", "X-Import-Secret": secret, ...accessHeaders },
+    body: JSON.stringify({ table, rows, mode: "insert-if-missing" })
   });
   if (!response.ok) throw new Error("Import " + table + " failed: HTTP " + response.status + " " + (await response.text()).slice(0, 500));
   return response.json();
@@ -178,7 +212,7 @@ async function importStorage(root) {
     form.append("file", new Blob([buffer], { type: "application/octet-stream" }), path.basename(object.file));
     const response = await fetch(target + "/api/admin/import/storage", {
       method: "POST",
-      headers: { "X-Import-Secret": secret },
+      headers: { "X-Import-Secret": secret, ...accessHeaders },
       body: form
     });
     if (!response.ok) throw new Error("Import storage " + object.bucket + "/" + object.objectPath + " failed: HTTP " + response.status);
@@ -188,6 +222,7 @@ async function importStorage(root) {
 
 const sql = fs.readFileSync(backupPath, "utf8");
 const tables = parseDump(sql);
+if (tables.size === 0) throw new Error("No supported PostgreSQL COPY tables were found in the backup input");
 const summary = Object.fromEntries([...tables].map(([table, data]) => [table, data.rows.length]));
 console.log(JSON.stringify({ backup: path.basename(backupPath), tables: summary, dryRun }, null, 2));
 

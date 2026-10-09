@@ -4,7 +4,7 @@ import { TABLES } from "../worker/schema.js";
 
 const root = process.cwd();
 const dbPath = path.join(root, "recovered", "database.json");
-const outputPath = path.join(root, "migrations", "0004_seed_recovered.sql");
+const outputPath = path.join(root, "recovered", "private", "seed-recovered.local.sql");
 
 if (!fs.existsSync(dbPath)) {
   console.error("Database file not found:", dbPath);
@@ -79,7 +79,7 @@ for (const [table, info] of Object.entries(tablesData)) {
     const colNames = colsInRow.map((c) => `"${c}"`).join(", ");
     const colValues = colsInRow.map((c) => serializeForD1(table, c, row, row[c])).join(", ");
 
-    statements.push(`INSERT OR REPLACE INTO "${table}" (${colNames}) VALUES (${colValues});`);
+    statements.push(`INSERT OR IGNORE INTO "${table}" (${colNames}) VALUES (${colValues});`);
     totalRows++;
   }
 }
@@ -88,5 +88,7 @@ const sqlContent = "-- Generated seed file for Cloudflare D1 from recovered/data
   "-- Total rows: " + totalRows + "\n\n" +
   statements.join("\n") + "\n";
 
+fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, sqlContent, "utf8");
-console.log(`Generated ${outputPath} with ${totalRows} rows across ${Object.keys(tablesData).length} tables (${sqlContent.length} bytes).`);
+console.log(`Generated LOCAL-ONLY seed ${outputPath} with ${totalRows} rows across ${Object.keys(tablesData).length} tables (${sqlContent.length} bytes).`);
+console.log("Do not commit this file or apply it before verifying source and target row/media counts.");

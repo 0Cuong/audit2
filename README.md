@@ -30,10 +30,10 @@ Skills are intentionally small and progressive: select the smallest useful set, 
 
 React/Vite is served as Cloudflare Worker Assets. Application data is stored in D1 and media in R2. The original Supabase migrations remain in `supabase/migrations/` for recovery reference.
 
-Before production deployment, configure a real D1 database ID, restrict CORS to the application's origin, and add application-level authorization/tenant isolation to the API. The current worker is not a production security boundary by itself.
+Production API access is fail-closed and requires Cloudflare Access JWT validation. Before deployment, verify the real D1 database ID, create a Cloudflare Access application covering the entire app hostname, and populate the required GitHub deployment secrets. Only allow-listed emails and service tokens can reach API routes; admin imports additionally require IMPORT_SECRET. This repo is a single shared couple workspace, not a multi-tenant authorization system.
 
 ## Recovery
 
-Recovery artifacts are kept intact for data-integrity reasons. Never reset, truncate, delete, or replace the source recovery artifacts until migration is independently verified.
+Recovery artifacts must remain local/private. Never commit PostgreSQL backups, recovered/database.json, media dumps, or generated seed SQL. The seed generator writes to recovered/private/seed-recovered.local.sql, which Git ignores; apply it manually only after reconciliation. The repository was public while a recovered seed file contained personal relationship data, so removing it from the current tree does not erase public Git history. See docs/SECURITY_RECOVERY.md for the required exposure remediation.
 
-See `docs/ENGINEERING_AUDIT_2026-10-05.md` for the current evidence-based audit and `docs/AGENT_SKILLS.md` for the skill system.
+See `docs/ENGINEERING_AUDIT_2026-10-09.md` for the current audit, `docs/SECURITY_RECOVERY.md` for required privacy/security actions, and `docs/AGENT_SKILLS.md` for the skill system.

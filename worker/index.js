@@ -3,7 +3,25 @@ import { TABLES } from "./schema.js";
 
 import { BUCKETS } from "./modules/storage-constants.js";
 import { buildCorsHeaders, isCorsOriginAllowed } from "./cors.js";
+import { verifyCloudflareAccess, isAdminAccessIdentity } from "./access-auth.js";
 
+
+const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+const BLOCKED_UPLOAD_TYPES = new Set(["text/html", "application/xhtml+xml", "application/javascript", "text/javascript", "text/css", "application/xml", "text/xml"]);
+
+function safeUploadContentType(file) {
+  const contentType = String(file?.type || "application/octet-stream").split(";")[0].trim().toLowerCase();
+  return BLOCKED_UPLOAD_TYPES.has(contentType) ? null : contentType;
+}
+
+function mediaSecurityHeaders() {
+  return {
+    "cache-control": "private, no-store",
+    "x-content-type-options": "nosniff",
+    "content-security-policy": "default-src 'none'; sandbox",
+    "x-frame-options": "DENY"
+  };
+}
 
 function json(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), {
@@ -16,6 +34,10 @@ function withCors(response, request, env) {
   const headers = new Headers(response.headers);
   for (const [key, value] of Object.entries(buildCorsHeaders(request, env.CORS_ORIGIN))) headers.set(key, value);
   headers.set("Vary", "Origin");
+  if (new URL(request.url).pathname.startsWith("/api/")) {
+    headers.set("Cache-Control", "no-store");
+    headers.set("X-Content-Type-Options", "nosniff");
+  }
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
@@ -36,7 +58,7 @@ function serializeValue(table, column, value) {
   const type = TABLES[table][column];
   if (value === undefined || value === null) return null;
   if (type === "json") return JSON.stringify(value);
-  if (type === "boolean") return value ? 1 : 0;
+  if (type === "boolean") return value === true || value === 1 || value === "1" || value === "true" || value === "t" ? 1 : 0;
   if (type === "number") return Number(value);
   return String(value);
 }
@@ -45,13 +67,9 @@ function deserializeValue(table, column, value) {
   const type = TABLES[table][column];
   if (value === undefined || value === null) return value ?? null;
   if (type === "json") {
-    try {
-      if (typeof value === "string") {
-        if (value === "{}" || value === "") return [];
-        return JSON.parse(value);
-      }
-      return value;
-    } catch { return []; }
+    if (typeof value !== "string") return value;
+    if (value === "") return null;
+    try { return JSON.parse(value); } catch { return value; }
   }
   if (type === "boolean") return value === true || value === 1 || value === "1" || value === "t" || value === "true";
   if (type === "number") return Number(value);
@@ -173,7 +191,7 @@ async function queryRows(env, body) {
   }
 
   if (Number.isFinite(body.limit)) {
-    sql += " LIMIT " + Math.max(0, Math.trunc(body.limit));
+    sql += " LIMIT " + Math.min(500, Math.max(0, Math.trunc(body.limit)));
   }
 
   const result = await env.DB.prepare(sql).bind(...params).all();
@@ -316,7 +334,7 @@ async function handleStorage(request, env, pathname) {
     if (!object) return new Response("Not Found", { status: 404 });
     const headers = new Headers();
     headers.set("etag", object.httpEtag || object.etag || "");
-    headers.set("cache-control", "public, max-age=31536000, immutable");
+    for (const [name, value] of Object.entries(mediaSecurityHeaders())) headers.set(name, value);
     headers.set("content-type", object.httpMetadata?.contentType || "application/octet-stream");
     return new Response(object.body, { status: 200, headers });
   }
@@ -325,12 +343,10 @@ async function handleStorage(request, env, pathname) {
     const form = await request.formData();
     const file = form.get("file");
     if (!(file instanceof File)) return json(apiError("Missing file"), 400);
-    await env.MEDIA.put(key, file.stream(), {
-      httpMetadata: {
-        contentType: file.type || "application/octet-stream",
-        cacheControl: "public, max-age=31536000, immutable"
-      }
-    });
+    if (file.size > MAX_UPLOAD_BYTES) return json(apiError("File exceeds the 50 MiB upload limit", 413, "UPLOAD_TOO_LARGE"), 413);
+    const contentType = safeUploadContentType(file);
+    if (!contentType) return json(apiError("Active document content types are not accepted", 415, "UNSAFE_MEDIA_TYPE"), 415);
+    await env.MEDIA.put(key, file.stream(), { httpMetadata: { contentType, cacheControl: "private, no-store" } });
     return json({ data: { path, bucket }, error: null });
   }
 
@@ -377,19 +393,38 @@ async function handleAdminImport(request, env) {
     const file = form.get("file");
 
     if (!BUCKETS.has(bucket) || !(file instanceof File)) return json(apiError("Invalid storage upload"), 400);
+    if (file.size > MAX_UPLOAD_BYTES) return json(apiError("File exceeds the 50 MiB upload limit", 413, "UPLOAD_TOO_LARGE"), 413);
+    const contentType = safeUploadContentType(file);
+    if (!contentType) return json(apiError("Active document content types are not accepted", 415, "UNSAFE_MEDIA_TYPE"), 415);
     if (!env.MEDIA) return json(apiError("Storage service (R2) is not configured", 503, "STORAGE_UNAVAILABLE"), 503);
 
-    await env.MEDIA.put(bucket + "/" + path, file.stream(), {
-      httpMetadata: {
-        contentType: file.type || "application/octet-stream",
-        cacheControl: "public, max-age=31536000, immutable"
-      }
-    });
+    await env.MEDIA.put(bucket + "/" + path, file.stream(), { httpMetadata: { contentType, cacheControl: "private, no-store" } });
 
     return json({ ok: true, bucket, path });
   }
 
   return json(apiError("Not found", 404), 404);
+}
+
+async function handleRecoveredAnniversary(request, env, pathname) {
+  const match = pathname.match(/^\/api\/recovered\/anniversaries\/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:jpg|jpeg|png|webp))$/i);
+  if (!match) return json(apiError("Recovered media not found", 404, "MEDIA_NOT_FOUND"), 404);
+  if (!env.MEDIA) return json(apiError("Storage service (R2) is not configured", 503, "STORAGE_UNAVAILABLE"), 503);
+  const requestedName = match[1];
+  const candidates = [requestedName];
+  if (/\.jpg$/i.test(requestedName)) candidates.push(requestedName.replace(/\.jpg$/i, ".webp"));
+  if (/\.webp$/i.test(requestedName)) candidates.push(requestedName.replace(/\.webp$/i, ".jpg"));
+  for (const filename of candidates) {
+    const object = await env.MEDIA.get("photos/anniversaries/" + filename);
+    if (!object) continue;
+    const fallbackTypes = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp" };
+    const extension = filename.split(".").pop().toLowerCase();
+    const headers = new Headers(mediaSecurityHeaders());
+    headers.set("etag", object.httpEtag || object.etag || "");
+    headers.set("content-type", object.httpMetadata?.contentType || fallbackTypes[extension] || "application/octet-stream");
+    return new Response(object.body, { status: 200, headers });
+  }
+  return json(apiError("Recovered media not found in R2", 404, "MEDIA_NOT_FOUND"), 404);
 }
 
 async function handleApi(request, env) {
@@ -401,6 +436,10 @@ async function handleApi(request, env) {
   }
 
   if (url.pathname === "/api/data" && request.method === "POST") return handleData(request, env);
+
+  if (url.pathname.startsWith("/api/recovered/anniversaries/") && request.method === "GET") {
+    return handleRecoveredAnniversary(request, env, url.pathname);
+  }
 
   if (url.pathname.startsWith("/api/storage/") || url.pathname.startsWith("/api/media/")) {
     return handleStorage(request, env, url.pathname);
@@ -421,6 +460,17 @@ export default {
 
     const url = new URL(request.url);
     if (url.pathname.startsWith("/api/")) {
+      if (url.pathname !== "/api/health") {
+        const identity = await verifyCloudflareAccess(request, env);
+        if (!identity.ok) {
+          const status = identity.status || 401;
+          const message = status === 503 ? "Cloudflare Access authentication is not configured or unavailable" : "Authentication required or identity is not allowed";
+          return withCors(json(apiError(message, status, identity.code || "UNAUTHORIZED"), status), request, env);
+        }
+        if (url.pathname.startsWith("/api/admin/import/") && !isAdminAccessIdentity(identity, env)) {
+          return withCors(json(apiError("Administrator identity required", 403, "ADMIN_REQUIRED"), 403), request, env);
+        }
+      }
       try {
         return withCors(await handleApi(request, env), request, env);
       } catch (err) {
