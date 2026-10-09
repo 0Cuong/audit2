@@ -135,15 +135,43 @@ function parseDump(sql) {
   return tables;
 }
 
+async function uploadInlineAnniversaryMedia(rows) {
+  const maxBytes = 50 * 1024 * 1024;
+  let uploaded = 0;
+  for (const row of rows) {
+    if (typeof row?.photo_url !== "string" || !row.photo_url.startsWith("data:image/")) continue;
+    const match = row.photo_url.match(/^data:(image\/(?:jpeg|jpg|png|webp));base64,([A-Za-z0-9+/=\r\n]+)$/i);
+    if (!match) throw new Error("Unsupported inline anniversary image for row " + (row.id || "(missing id)"));
+    if (!row.id || !/^[0-9a-f-]{36}$/i.test(String(row.id))) throw new Error("Anniversary media row has an invalid UUID");
+    const mime = match[1].toLowerCase() === "image/jpg" ? "image/jpeg" : match[1].toLowerCase();
+    const extension = mime === "image/webp" ? "webp" : mime === "image/png" ? "png" : "jpg";
+    const bytes = Buffer.from(match[2].replace(/\s/g, ""), "base64");
+    if (!bytes.length || bytes.length > maxBytes) throw new Error("Anniversary image is empty or exceeds 50 MiB");
+    const form = new FormData();
+    form.append("bucket", "photos");
+    form.append("path", "anniversaries/" + row.id + "." + extension);
+    form.append("file", new Blob([bytes], { type: mime }), String(row.id) + "." + extension);
+    const response = await fetch(target + "/api/admin/import/storage", {
+      method: "POST",
+      headers: { "X-Import-Secret": secret, ...accessHeaders },
+      body: form
+    });
+    if (!response.ok) throw new Error("Upload anniversary media failed for row " + row.id + ": HTTP " + response.status);
+    row.photo_url = "/api/recovered/anniversaries/" + row.id + "." + extension;
+    uploaded++;
+  }
+  return uploaded;
+}
+
 async function importTable(table, rows) {
+  if (table === "anniversaries") {
+    const mediaCount = await uploadInlineAnniversaryMedia(rows);
+    if (mediaCount) console.log("anniversaries: uploaded inline media " + mediaCount);
+  }
   const response = await fetch(target + "/api/admin/import/table", {
     method: "POST",
     headers: { "content-type": "application/json", "X-Import-Secret": secret, ...accessHeaders },
-    body: JSON.stringify({
-      table,
-      rows,
-      mode: "insert-if-missing"
-    })
+    body: JSON.stringify({ table, rows, mode: "insert-if-missing" })
   });
   if (!response.ok) throw new Error("Import " + table + " failed: HTTP " + response.status + " " + (await response.text()).slice(0, 500));
   return response.json();
