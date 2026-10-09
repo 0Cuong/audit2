@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "audit2-cuongisme",
+  "name": "formygf",
   "main": "worker/index.js",
   "compatibility_date": "2026-10-02",
   "assets": {
