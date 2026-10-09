@@ -115,7 +115,7 @@ function parseValue(column, value) {
 }
 
 function parseDump(sql) {
-  const re = /^COPY public\.([^\s(]+) \(([^)]*)\) FROM stdin;\n([\\s\\S]*?)^\\\.\n/gm;
+  const re = /^COPY public\.([^\s(]+) \(([^)]*)\) FROM stdin;\n([\s\S]*?)^\\\.\n/gm;
   const tables = new Map();
   let match;
   while ((match = re.exec(sql))) {
