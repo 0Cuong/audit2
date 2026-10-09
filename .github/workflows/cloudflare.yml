@@ -28,7 +28,17 @@ jobs:
       - run: npm run lint
       - run: npm run build
       - name: Validate PostgreSQL backup parser
-        run: DRY_RUN=1 node scripts/recover-postgres-backup-to-cloudflare.mjs
+        shell: bash
+        run: |
+          set -euo pipefail
+          BACKUP="db_cluster-03-10-2026@23-05-37.backup"
+          if [[ -f "$BACKUP" ]]; then
+            echo "Validating the supplied PostgreSQL backup in dry-run mode."
+            DRY_RUN=1 node scripts/recover-postgres-backup-to-cloudflare.mjs
+          else
+            echo "::warning::The private PostgreSQL backup is not present in this checkout; validating the parser with a synthetic fixture instead."
+            DB_BACKUP_PATH="scripts/fixtures/postgres-copy-smoke.sql" DRY_RUN=1 node scripts/recover-postgres-backup-to-cloudflare.mjs
+          fi
 
   deploy:
     name: Deploy to Cloudflare
@@ -42,6 +52,35 @@ jobs:
           node-version: 24
           package-manager-cache: false
       - run: npm ci --no-audit --no-fund
+      - name: Validate production configuration
+        run: node scripts/validate-production-config.mjs
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ACCESS_TEAM_DOMAIN: ${{ secrets.ACCESS_TEAM_DOMAIN }}
+          ACCESS_AUD: ${{ secrets.ACCESS_AUD }}
+          ACCESS_ALLOWED_EMAILS: ${{ secrets.ACCESS_ALLOWED_EMAILS }}
+          ACCESS_ADMIN_EMAILS: ${{ secrets.ACCESS_ADMIN_EMAILS }}
+          ACCESS_ALLOWED_SERVICE_NAMES: ${{ secrets.ACCESS_ALLOWED_SERVICE_NAMES }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          IMPORT_SECRET: ${{ secrets.IMPORT_SECRET }}
+      - name: Sync Cloudflare Access runtime secrets
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ACCESS_TEAM_DOMAIN: ${{ secrets.ACCESS_TEAM_DOMAIN }}
+          ACCESS_AUD: ${{ secrets.ACCESS_AUD }}
+          ACCESS_ALLOWED_EMAILS: ${{ secrets.ACCESS_ALLOWED_EMAILS }}
+          ACCESS_ADMIN_EMAILS: ${{ secrets.ACCESS_ADMIN_EMAILS }}
+          ACCESS_ALLOWED_SERVICE_NAMES: ${{ secrets.ACCESS_ALLOWED_SERVICE_NAMES }}
+          IMPORT_SECRET: ${{ secrets.IMPORT_SECRET }}
+        run: |
+          set -euo pipefail
+          for name in ACCESS_TEAM_DOMAIN ACCESS_AUD ACCESS_ALLOWED_EMAILS ACCESS_ADMIN_EMAILS ACCESS_ALLOWED_SERVICE_NAMES IMPORT_SECRET; do
+            printf "%s" "${!name}" | npx wrangler@latest secret put "$name" >/dev/null
+          done
       - run: npx wrangler@latest d1 migrations apply DB --remote
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
