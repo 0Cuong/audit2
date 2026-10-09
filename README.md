@@ -1,6 +1,6 @@
 # CUONGISME
 
-CUONGISME is a Vite + React + TypeScript relationship and memory web app with a recovery-first local mode and a Cloudflare D1/R2 production path.
+CUONGISME is a Vite + React + TypeScript relationship and memory web app with a recovery-first local mode and a Cloudflare D1/KV production path.
 
 ## Development
 
@@ -28,9 +28,9 @@ Skills are intentionally small and progressive: select the smallest useful set, 
 
 ## Production stack
 
-React/Vite is served as Cloudflare Worker Assets. Application data is stored in D1 and media in R2. The original Supabase migrations remain in `supabase/migrations/` for recovery reference.
+React/Vite is served as Cloudflare Worker Assets. Application data is stored in D1 and media in the configured KV namespace (`MEDIA`). KV is a compromise for a no-R2 setup: keep uploads below the enforced 20 MiB application limit and retain independent backups, because recovered files are not automatically copied into KV. The original Supabase migrations remain in `supabase/migrations/` for recovery reference.
 
-Production API access is fail-closed and requires Cloudflare Access JWT validation. Before deployment, verify the real D1 database ID, create a Cloudflare Access application covering the entire app hostname, and populate the required GitHub deployment secrets. Only allow-listed emails and service tokens can reach API routes; admin imports additionally require IMPORT_SECRET. This repo is a single shared couple workspace, not a multi-tenant authorization system.
+For production Workers Builds, set the production branch to `main`, build command to `npm run build`, and deploy command to `npx wrangler deploy`. Keep `npx wrangler preview` only for non-production branches; Previews need their own Preview-safe D1/KV bindings and Cloudflare Access configuration, not production resources. Production API access is fail-closed and requires Cloudflare Access JWT validation. Before deployment, verify the real D1 database ID, create a Cloudflare Access application covering the entire app hostname, and populate the required GitHub deployment secrets. Only allow-listed emails and service tokens can reach API routes; admin imports additionally require IMPORT_SECRET. This repo is a single shared couple workspace, not a multi-tenant authorization system.
 
 ## Recovery
 
