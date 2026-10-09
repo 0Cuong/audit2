@@ -6,7 +6,7 @@ import { buildCorsHeaders, isCorsOriginAllowed } from "./cors.js";
 import { verifyCloudflareAccess, isAdminAccessIdentity } from "./access-auth.js";
 
 
-const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 const BLOCKED_UPLOAD_TYPES = new Set(["text/html", "application/xhtml+xml", "application/javascript", "text/javascript", "text/css", "application/xml", "text/xml"]);
 
 function safeUploadContentType(file) {
@@ -326,27 +326,35 @@ async function handleStorage(request, env, pathname) {
 
   if (!BUCKETS.has(bucket)) return json(apiError("Unknown storage bucket", 404), 404);
   const key = bucket + "/" + path;
+  if (new TextEncoder().encode(key).byteLength > 512) {
+    return json(apiError("Media key exceeds the Cloudflare KV 512-byte key limit", 400, "MEDIA_KEY_TOO_LONG"), 400);
+  }
 
-  if (!env.MEDIA) return json(apiError("Storage service (R2) is not configured", 503, "STORAGE_UNAVAILABLE"), 503);
+  if (!env.MEDIA) return json(apiError("Media KV namespace is not configured", 503, "STORAGE_UNAVAILABLE"), 503);
 
   if (!isUpload && request.method === "GET") {
-    const object = await env.MEDIA.get(key);
-    if (!object) return new Response("Not Found", { status: 404 });
+    const stored = await env.MEDIA.getWithMetadata(key, "arrayBuffer");
+    if (!stored.value) return new Response("Not Found", { status: 404 });
     const headers = new Headers();
-    headers.set("etag", object.httpEtag || object.etag || "");
     for (const [name, value] of Object.entries(mediaSecurityHeaders())) headers.set(name, value);
-    headers.set("content-type", object.httpMetadata?.contentType || "application/octet-stream");
-    return new Response(object.body, { status: 200, headers });
+    headers.set("content-type", stored.metadata?.contentType || "application/octet-stream");
+    if (stored.metadata?.etag) headers.set("etag", stored.metadata.etag);
+    return new Response(stored.value, { status: 200, headers });
   }
 
   if (isUpload && (request.method === "POST" || request.method === "PUT")) {
     const form = await request.formData();
     const file = form.get("file");
     if (!(file instanceof File)) return json(apiError("Missing file"), 400);
-    if (file.size > MAX_UPLOAD_BYTES) return json(apiError("File exceeds the 50 MiB upload limit", 413, "UPLOAD_TOO_LARGE"), 413);
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return json(apiError("File exceeds the 20 MiB limit for free-tier KV media storage", 413, "UPLOAD_TOO_LARGE"), 413);
+    }
     const contentType = safeUploadContentType(file);
     if (!contentType) return json(apiError("Active document content types are not accepted", 415, "UNSAFE_MEDIA_TYPE"), 415);
-    await env.MEDIA.put(key, file.stream(), { httpMetadata: { contentType, cacheControl: "private, no-store" } });
+
+    await env.MEDIA.put(key, await file.arrayBuffer(), {
+      metadata: { contentType, size: file.size, uploadedAt: new Date().toISOString() }
+    });
     return json({ data: { path, bucket }, error: null });
   }
 
@@ -396,9 +404,15 @@ async function handleAdminImport(request, env) {
     if (file.size > MAX_UPLOAD_BYTES) return json(apiError("File exceeds the 50 MiB upload limit", 413, "UPLOAD_TOO_LARGE"), 413);
     const contentType = safeUploadContentType(file);
     if (!contentType) return json(apiError("Active document content types are not accepted", 415, "UNSAFE_MEDIA_TYPE"), 415);
-    if (!env.MEDIA) return json(apiError("Storage service (R2) is not configured", 503, "STORAGE_UNAVAILABLE"), 503);
+    if (!env.MEDIA) return json(apiError("Media KV namespace is not configured", 503, "STORAGE_UNAVAILABLE"), 503);
 
-    await env.MEDIA.put(bucket + "/" + path, file.stream(), { httpMetadata: { contentType, cacheControl: "private, no-store" } });
+    const key = bucket + "/" + path;
+    if (new TextEncoder().encode(key).byteLength > 512) {
+      return json(apiError("Media key exceeds the Cloudflare KV 512-byte key limit", 400, "MEDIA_KEY_TOO_LONG"), 400);
+    }
+    await env.MEDIA.put(key, await file.arrayBuffer(), {
+      metadata: { contentType, size: file.size, uploadedAt: new Date().toISOString() }
+    });
 
     return json({ ok: true, bucket, path });
   }
@@ -407,24 +421,26 @@ async function handleAdminImport(request, env) {
 }
 
 async function handleRecoveredAnniversary(request, env, pathname) {
-  const match = pathname.match(/^\/api\/recovered\/anniversaries\/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:jpg|jpeg|png|webp))$/i);
+  const match = pathname.match(/^\\/api\\/recovered\\/anniversaries\\/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(?:jpg|jpeg|png|webp))$/i);
   if (!match) return json(apiError("Recovered media not found", 404, "MEDIA_NOT_FOUND"), 404);
-  if (!env.MEDIA) return json(apiError("Storage service (R2) is not configured", 503, "STORAGE_UNAVAILABLE"), 503);
+  if (!env.MEDIA) return json(apiError("Media KV namespace is not configured", 503, "STORAGE_UNAVAILABLE"), 503);
+
   const requestedName = match[1];
   const candidates = [requestedName];
-  if (/\.jpg$/i.test(requestedName)) candidates.push(requestedName.replace(/\.jpg$/i, ".webp"));
-  if (/\.webp$/i.test(requestedName)) candidates.push(requestedName.replace(/\.webp$/i, ".jpg"));
+  if (/\\.jpg$/i.test(requestedName)) candidates.push(requestedName.replace(/\\.jpg$/i, ".webp"));
+  if (/\\.webp$/i.test(requestedName)) candidates.push(requestedName.replace(/\\.webp$/i, ".jpg"));
+
   for (const filename of candidates) {
-    const object = await env.MEDIA.get("photos/anniversaries/" + filename);
-    if (!object) continue;
+    const stored = await env.MEDIA.getWithMetadata("photos/anniversaries/" + filename, "arrayBuffer");
+    if (!stored.value) continue;
     const fallbackTypes = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp" };
     const extension = filename.split(".").pop().toLowerCase();
     const headers = new Headers(mediaSecurityHeaders());
-    headers.set("etag", object.httpEtag || object.etag || "");
-    headers.set("content-type", object.httpMetadata?.contentType || fallbackTypes[extension] || "application/octet-stream");
-    return new Response(object.body, { status: 200, headers });
+    if (stored.metadata?.etag) headers.set("etag", stored.metadata.etag);
+    headers.set("content-type", stored.metadata?.contentType || fallbackTypes[extension] || "application/octet-stream");
+    return new Response(stored.value, { status: 200, headers });
   }
-  return json(apiError("Recovered media not found in R2", 404, "MEDIA_NOT_FOUND"), 404);
+  return json(apiError("Recovered media not found in KV", 404, "MEDIA_NOT_FOUND"), 404);
 }
 
 async function handleApi(request, env) {
