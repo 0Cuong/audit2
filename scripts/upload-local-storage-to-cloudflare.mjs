@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { inferMediaContentType } from "../worker/modules/media-utils.js";
+import { resolveMediaContentType } from "../worker/modules/media-utils.js";
 
 const storageRoot = process.env.STORAGE_DUMP_PATH ? path.resolve(process.env.STORAGE_DUMP_PATH) : "";
 const target = String(process.env.TARGET_API_URL || "").replace(/\/+$/, "");
@@ -55,9 +55,15 @@ function objectFromFile(file) {
     objectParts = parts.slice(bucketIndex + 1);
   } else {
     const rootBucket = path.basename(storageRoot).toLowerCase();
-    if (!BUCKETS.has(rootBucket)) return null;
-    bucket = rootBucket;
-    objectParts = parts;
+    if (rootBucket === "anniversaries") {
+      bucket = "photos";
+      objectParts = ["anniversaries", ...parts];
+    } else if (BUCKETS.has(rootBucket)) {
+      bucket = rootBucket;
+      objectParts = parts;
+    } else {
+      return null;
+    }
   }
 
   const objectPath = objectParts.join("/");
@@ -97,7 +103,7 @@ const importedByBucket = {};
 let imported = 0;
 for (const [index, object] of objects.entries()) {
   const fileBytes = fs.readFileSync(object.file);
-  const contentType = inferMediaContentType(object.objectPath) || "application/octet-stream";
+  const contentType = resolveMediaContentType(null, object.objectPath, fileBytes);
   const form = new FormData();
   form.append("bucket", object.bucket);
   form.append("path", object.objectPath);
